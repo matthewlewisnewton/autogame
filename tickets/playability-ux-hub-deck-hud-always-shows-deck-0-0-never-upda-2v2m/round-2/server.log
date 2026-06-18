@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/data
+[users] Loaded 1 user record(s) from storage provider
+Server listening on port 3005
+Player connected: socket=tHtMhi5aXVypOh5bAAAD, playerId=af0790ea-d856-4678-a5b6-701d82a38196
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=VKHyAbRFYgw3B52UAAAH, playerId=82bf3e9d-7b5f-440b-84c3-6a028b2267df
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=edc7d6ac-ea28-48c3-84f9-8a41b54fbd8a value=8
+Player disconnected: tHtMhi5aXVypOh5bAAAD
+Player disconnected: VKHyAbRFYgw3B52UAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

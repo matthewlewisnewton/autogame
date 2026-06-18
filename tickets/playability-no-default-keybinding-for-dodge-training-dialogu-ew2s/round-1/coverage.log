@@ -1,0 +1,1215 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game
+      Coverage enabled with v8
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > updateEnemyShieldBarMesh scales by shieldHp / maxShieldHp
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-variant.test.js > warded variant visuals > createEnemyMesh stores _origColor from the type palette
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/renderer-variant.test.js:29:16
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:852:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7514:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:852:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7514:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/named-rare-visuals.test.js > named-rare enemy visuals > applyEnemyNameplate creates and disposes sprites keyed on namedRare
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/named-rare-visuals.test.js (4 tests) 1224ms
+   ✓ named-rare enemy visuals > parseNamedRareTintHex converts hex strings to color numbers  773ms
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > does not create a shield bar when shieldHp is absent or zero
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > rebuildDungeonLayout re-inits fire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-shield-bar.test.js (4 tests) 1274ms
+   ✓ enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height  683ms
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > disposes the bar when the escort minion leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/spire-atmosphere.test.js (4 tests) 1172ms
+   ✓ spire-ascent atmosphere > lerpSpireAtmosphere(0) is darker than lerpSpireAtmosphere(1) for background and fog  618ms
+ ✓ |client| client/test/renderer-enemy-emissive-priority.test.js (4 tests) 1384ms
+   ✓ resolveEnemyEmissive priority > windup survives a non-reveal reveal pass on the same frame  787ms
+   ✓ resolveEnemyEmissive priority > falls back to windup after damage flash expires  328ms
+stdout | client/test/renderer-variant.test.js > warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/fire-atmosphere.test.js (4 tests) 1418ms
+   ✓ fire-cavern atmosphere > lerpFireCavernAtmosphere(1) has higher red/orange channel sum than lerpFireCavernAtmosphere(0)  776ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/escort-hp-bar.test.js (4 tests) 1384ms
+   ✓ escort NPC HP bar > shouldHaveEscortHealthBar is true only for isEscort minions  681ms
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 1338ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  930ms
+   ✓ deck booth via booth:action > populates the deck editor and deck-add still emits deckAddCard  367ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 1472ms
+   ✓ renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup  731ms
+   ✓ renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes  331ms
+stderr | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |client| client/test/airborne-floor-render.test.js (7 tests) 1678ms
+   ✓ airborne floor-aware render + shadow > flying enemy render offset tracks the floor surface via server world Y  614ms
+   ✓ airborne floor-aware render + shadow > grounded enemies and minions are unchanged on a non-default floor  375ms
+ ✓ |client| client/test/level-settings-rewards.test.js (2 tests) 1757ms
+   ✓ level settings return rewards preview cache > keeps return rewards preview across a slim stateUpdate tick after deploy  1070ms
+   ✓ level settings return rewards preview cache > clears cached preview when returning to the lobby  683ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-variant.test.js (6 tests) 2370ms
+   ✓ warded variant visuals > variantMarkerColor returns cyan for warded and magenta for other variants  1017ms
+   ✓ frenzied variant visuals > variantMarkerColor returns red for frenzied, distinct from other variants  327ms
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 2290ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  1258ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does nothing for ?booth=hatswap on a non-localhost host  542ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  488ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/main.test.js:2810:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/main.test.js:2820:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/main.test.js:2862:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |client| client/test/medicHud.test.js (3 tests) 1937ms
+   ✓ renderGuildMedic() charity medic HUD > disables heal at full health with zero currency  847ms
+   ✓ renderGuildMedic() charity medic HUD > enables heal with shortfall copy when injured and broke  639ms
+   ✓ renderGuildMedic() charity medic HUD > enables heal with paid copy when injured and can afford medic  449ms
+ ✓ |client| client/test/renderer-telepipe-portal.test.js (7 tests) 2144ms
+   ✓ telepipe portal animation > creates a Group with cylinder, two rings, and particle children  708ms
+   ✓ telepipe portal animation > animateTelepipePortal is a no-op when no portal exists  374ms
+ ✓ |client| client/test/run-summary-lobby-race.test.js (3 tests) 2225ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > keeps Sortie Complete visible when lobby stateUpdate follows showRunSummary  1165ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > synthesizes Sortie Complete from a terminal run snapshot when runComplete was missed  538ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > Return to Hub dismisses the overlay after server clears the run  519ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 2178ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  1011ms
+   ✓ shop booth via booth:action > emits buyShopCard when the buy button is clicked after booth open  558ms
+   ✓ shop booth via booth:action > emits sellCard when a sell button is clicked after booth open  521ms
+ ✓ |client| client/test/renderer-run-summary-input.test.js (3 tests) 2466ms
+   ✓ renderer run-summary input lock > updateMyPlayer() does not advance position or emit move while overlay is visible  1326ms
+   ✓ renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible  731ms
+   ✓ renderer run-summary input lock > updateMyPlayer() blocks movement when run.status is failed without overlay checker  407ms
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 2214ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  847ms
+   ✓ hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey  732ms
+   ✓ hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh  471ms
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 2347ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  916ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > spawns the eruption VFX at the reported x/z/radius  667ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > is a guarded no-op when x/z are not finite  383ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/run-summary-input-lock.test.js (4 tests) 2793ms
+   ✓ run-summary overlay input lock > isRunSummaryOverlayVisible() is true when #run-summary-overlay display is not none  1090ms
+   ✓ run-summary overlay input lock > canUseGameActions() is false after showRunSummary({ status: victory })  497ms
+   ✓ run-summary overlay input lock > key-item binding does not emit useKeyItem while run-summary overlay is visible  508ms
+   ✓ run-summary overlay input lock > showRunSummary mirrors failed onto gameState.run.status  696ms
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 3599ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  1325ms
+   ✓ level-map lobby integration (main.js) > marks the node matching selectedQuestId/Tier as selected  483ms
+   ✓ level-map lobby integration (main.js) > clicking an unlocked node emits SELECT_QUEST with that questId/tier  594ms
+   ✓ level-map lobby integration (main.js) > clicking a locked node emits nothing  711ms
+   ✓ level-map lobby integration (main.js) > renders empty without throwing when no levelUnlockGraph is present  485ms
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > spawns unlock VFX without leaving the gate mesh in the scene map
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > does not re-trigger spawn scale-in when the minion id was already seen
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-time-scale-gate.test.js (5 tests) 3283ms
+   ✓ debug time-scale client gate (main.js) > Shift+T does not emit on localhost until the server reports the feature authorized  963ms
+   ✓ debug time-scale client gate (main.js) > Shift+T emits setDebugTimeScale once the snapshot reports debugTimeScaleAllowed:true  409ms
+   ✓ debug time-scale client gate (main.js) > Shift+T stops emitting again after the snapshot revokes authorization  640ms
+   ✓ debug time-scale client gate (main.js) > __setDebugTimeScaleForTest no-ops when not authorized and emits when authorized  691ms
+   ✓ debug time-scale client gate (main.js) > exposes debugTimeScaleAllowed in the harness state  579ms
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > tracks multiple locked passages independently
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/passage-gate-unlock-feedback.test.js (2 tests) 787ms
+   ✓ passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked  520ms
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > gamepad D-pad Up: in-range booth → same chain as keyboard F
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 3411ms
+   ✓ key item cooldown HUD > shows ready state with name and default keybind when equipped and playing with zero cooldown  935ms
+   ✓ key item cooldown HUD > clears indicator when unequipped or not in playing phase  360ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  583ms
+   ✓ key item cooldown HUD > flashKeyItemIndicator adds flash classes without removing HUD children  672ms
+   ✓ dash VFX detection in stateUpdate > calls triggerDashVFX when player position jumps beyond dash threshold  591ms
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > hides the ring when lock-on cycles away from that enemy
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-lock-on-ring.test.js (2 tests) 774ms
+   ✓ syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy  456ms
+   ✓ syncLockOnRing > hides the ring when lock-on cycles away from that enemy  315ms
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > hides the prompt when the rendered scene is not the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > battery_automaton charge-pulse sync > fires spawnBatteryChargePulseEffect once when lastChargePulseAt advances, not on first sighting
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > clears gate meshes on rebuildDungeonLayout
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > pressing F when out of range produces no socket emission and no booth open
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/fly_replay_client.test.js (6 tests) 3933ms
+   ✓ fly replay client socket affinity > createSocket omits fly query and headers without affinity options  1079ms
+   ✓ fly replay client socket affinity > createSocket passes lobbyId and fly_instance_id query plus fly-force-instance-id header  558ms
+   ✓ fly replay client socket affinity > requestJoinLobby reconnects with remote instanceId and emits joinLobby on connect  474ms
+   ✓ fly replay client socket affinity > requestJoinLobby without instanceId emits joinLobby on the existing socket  690ms
+   ✓ fly replay client socket affinity > ?lobby= deep link routes to the summary instanceId after init  582ms
+   ✓ fly replay client socket affinity > plain createSocket after affinity clears fly extras (restoreSession path)  546ms
+ ✓ |client| client/test/passage-gate-meshes.test.js (3 tests) 1138ms
+   ✓ passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked  497ms
+   ✓ passage gate meshes > clears gate meshes on rebuildDungeonLayout  408ms
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-lobby-render.test.js (2 tests) 968ms
+   ✓ hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor  570ms
+   ✓ hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub  396ms
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/avatar-cosmetic-render.test.js (3 tests) 1320ms
+   ✓ avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic  504ms
+   ✓ avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load  343ms
+   ✓ avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls  471ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 4034ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  1155ms
+   ✓ lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden  552ms
+   ✓ lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby  457ms
+   ✓ lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag  751ms
+   ✓ lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag  533ms
+   ✓ lobby menu dismiss guard (main.js) > __openDeckBoothForTest and __openShopBoothForTest show #lobby when wired through main  584ms
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 612ms
+   ✓ renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method  607ms
+stdout | client/test/renderer-minion-summon.test.js > null_crawler windup telegraph lifetime > drives the telegraph ring duration from attackWindupMs and disposes the corridor when windup ends
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-minion-summon.test.js > null_crawler windup telegraph lifetime > drives the telegraph ring duration from attackWindupMs and disposes the corridor when windup ends
+[renderer] failed to apply model "/models/minion-null-crawler.glb" for "null_crawler": TypeError: Failed to parse URL from /models/minion-null-crawler.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createMinionMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/minionSync.js:105:21[90m)[39m
+    at syncMinionMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/minionSync.js:225:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:7516:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/minion-null-crawler.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |client| client/test/boothPrompt.test.js (5 tests) 1368ms
+   ✓ booth interaction prompt > shows the prompt on zone enter and hides it on exit  652ms
+   ✓ booth interaction prompt > hides the prompt when the rendered scene is not the hub  383ms
+ ✓ |client| client/test/gamepad.test.js (20 tests) 382ms
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 802ms
+   ✓ renderDeckViewer() / renderDeckStack() > renders draw pile cards with type icons and toggles via V key  783ms
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:134:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:137:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:142:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:145:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+ ✓ |client| client/test/renderer-minion-summon.test.js (4 tests) 1581ms
+   ✓ minion summon scale-in > records spawn time and starts new minion meshes below full scale  608ms
+   ✓ battery_automaton charge-pulse sync > fires spawnBatteryChargePulseEffect once when lastChargePulseAt advances, not on first sighting  375ms
+   ✓ null_crawler windup telegraph lifetime > drives the telegraph ring duration from attackWindupMs and disposes the corridor when windup ends  365ms
+ ✓ |client| client/test/input.test.js (52 tests) 450ms
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > server rejects out-of-range interaction with boothError
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 4701ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  1307ms
+   ✓ debug godmode toggle (main.js) > Shift+G does not emit toggleDebugGodmode when debugScenarioAllowed is false  395ms
+   ✓ debug godmode toggle (main.js) > Shift+G is swallowed when focus is in a text input  533ms
+   ✓ debug godmode toggle (main.js) > __toggleDebugGodmodeForTest emits toggleDebugGodmode when the socket is ready  663ms
+   ✓ debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds  571ms
+   ✓ debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult  470ms
+   ✓ debug godmode toggle (main.js) > stores debugGodmodeResult in harness state and logs success/failure  759ms
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 592ms
+   ✓ settings-driven renderer effects > spawnHitSpark no-ops when particles are disabled  589ms
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createPlayerAvatar keeps procedural visible when the model fails to load
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:199:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:202:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:216:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/models-registry.test.js:219:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/settings-layout.test.js (8 tests) 784ms
+stderr | client/test/avatar-dispose.test.js > disposeAvatar > fully disposes procedural fallback avatars when model load fails
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/avatar-dispose.test.js:146:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/avatar-dispose.test.js:149:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/models-registry.test.js (11 tests) 267ms
+ ✓ |client| client/test/apply-lock-on-press.test.js (3 tests) 1355ms
+   ✓ applyLockOnPress > snaps camera and player rotation toward a nearby enemy when camera faces away  415ms
+   ✓ applyLockOnPress > snaps camera behind player facing when no enemy is in range  372ms
+   ✓ applyLockOnPress > resets lock-on tracking so the first update frame starts from the snapped yaw  566ms
+ ✓ |client| client/test/booth-interact-chain.test.js (4 tests) 1790ms
+   ✓ booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens  568ms
+   ✓ booth interact chain (input → socket → server response → booth UI) > gamepad D-pad Up: in-range booth → same chain as keyboard F  330ms
+   ✓ booth interact chain (input → socket → server response → booth UI) > pressing F when out of range produces no socket emission and no booth open  334ms
+   ✓ booth interact chain (input → socket → server response → booth UI) > server rejects out-of-range interaction with boothError  555ms
+ ✓ |client| client/test/avatar-dispose.test.js (4 tests) 302ms
+ ✓ |client| client/test/avatar-cosmetic.test.js (11 tests) 341ms
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (8 tests) 1087ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  966ms
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > seats the equipped prop on the avatar and tracks the shown id
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > adds no prop for an unequipped/none key item
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |server| server/test/settings.test.js (38 tests) 68ms
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 5458ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  1055ms
+   ✓ quest dialogue comms UI (main.js) > auto-dismisses the comms toast after ~4s  475ms
+   ✓ quest dialogue comms UI (main.js) > ignores malformed questDialogue payloads  546ms
+   ✓ quest dialogue comms UI (main.js) > keeps only the last 20 log entries  680ms
+   ✓ quest dialogue comms UI (main.js) > hides and clears comms when returning to lobby  447ms
+   ✓ quest dialogue comms UI (main.js) > handles questDialogue socket events when playing  421ms
+   ✓ quest dialogue comms UI (main.js) > does not render comms outside the playing phase  675ms
+   ✓ quest dialogue comms UI (main.js) > queues pre-playing questDialogue and flushes when gamePhase becomes playing  1155ms
+ ✓ |client| client/test/attack-cast-hint.test.js (10 tests) 28ms
+ ✓ |client| client/test/keyItemProp.test.js (7 tests) 150ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/mesh-dispose.test.js > disposeOne > does not dispose shared glTF geometry/material still used by another live enemy
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:972:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:875:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:972:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:875:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicAllyHealVFX spawns telegraph ring and particle burst primitives
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicEnergyBeadVFX spawns corridor, trail, decal, and burst along the bead vector
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/mesh-dispose.test.js > disposeOne > disposes owned procedural geometry/material when model load fails
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/mesh-dispose.test.js:107:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/mesh-dispose.test.js:110:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/renderer-registry-normalize.test.js > getEnemyRenderScaleForTest() > reads world-space height from a live enemy mesh
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/test/renderer-registry-normalize.test.js:244:31
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | server/test/hub_presence_integration.test.js
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |client| client/test/mesh-dispose.test.js (2 tests) 146ms
+ ✓ |client| client/test/controller-calibration.test.js (2 tests) 8ms
+ ✓ |client| client/test/local-slow-prediction.test.js (5 tests) 8ms
+ ✓ |client| client/test/renderer-registry-normalize.test.js (20 tests) 127ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[users] No existing user file at /tmp/hub-presence-int-users-1781767311769-1fl9rvzgr4n.json — starting fresh
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Server listening on port 0
+
+ ✓ |client| client/test/vfx-primitives.test.js (46 tests) 73ms
+stdout | server/test/cosmetic_runtime.test.js
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |client| client/test/windup-charge.test.js (10 tests) 15ms
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 5811ms
+   ✓ character booth overlay (module) > openCharacterBooth() / closeCharacterBooth() toggle overlay visibility and preview  628ms
+   ✓ character booth overlay (module) > does not show confirm for hat-only changes  362ms
+   ✓ character booth overlay (module) > cancel on paid confirm aborts without save traffic  341ms
+   ✓ character booth overlay (module) > surfaces appearance errors and re-enables save  568ms
+   ✓ character booth overlay (module) > save button shows cost hint when appearance fields are dirty  310ms
+   ✓ character booth booth:action hook (main.js) > opens the overlay for boothId character in lobby and ignores other booths  495ms
+   ✓ character booth booth:action hook (main.js) > does not open the overlay when gamePhase is not lobby  588ms
+   ✓ character booth booth:action hook (main.js) > listens on the shared booth:action event name  1185ms
+   ✓ character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character  391ms
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767311939-zrz1jfu3tjn.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |client| client/test/attack-effect-updaters.test.js (2 tests) 10ms
+ ✓ |client| client/test/renderer-citadel-sovereign.test.js (3 tests) 8ms
+ ✓ |client| client/test/renderer-riftbound-colossus.test.js (3 tests) 7ms
+ ✓ |client| client/test/renderer-cinder-warden.test.js (3 tests) 5ms
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player connected: socket=TL3DH5BnNomlVbbjAAAB, playerId=c0e9c7b9-94a3-461c-888c-85802dd52276
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player connected: socket=49eaqyG6ZVV7iP__AAAD, playerId=32fdc65e-27c1-4396-b355-9b24bcf5f630
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312147-9w9jns33ajt.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+[users] Loaded 1 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312159-qo9yplkdd.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+[users] Loaded 1 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+Server listening on port 0
+
+ ✓ |client| client/test/renderer-magma-colossus.test.js (3 tests) 5ms
+ ✓ |client| client/test/flying-enemy-registry.test.js (3 tests) 5ms
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312270-tglbduk24r.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+[users] Loaded 2 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312274-ggcdt3hvali.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+[users] Loaded 2 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+Server listening on port 0
+
+ ✓ |client| client/test/questBooth.test.js (18 tests) 6579ms
+   ✓ quest booth booth:action hook (main.js) > shows #lobby and reveals the quest panel when the menu starts dismissed  1122ms
+   ✓ quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths  459ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel hidden when boothId quest fires outside the lobby phase  527ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel visible when the lobby is (re)shown after booth open  653ms
+   ✓ quest booth booth:action hook (main.js) > dismissGameLobby resets questPanelOpen and re-hides the wrapper  536ms
+   ✓ quest booth booth:action hook (main.js) > does not open the panel when gamePhase is not lobby  424ms
+   ✓ quest booth booth:action hook (main.js) > listens on the shared booth:action event name  666ms
+   ✓ ?booth=quest debug hook (main.js requestBoothDebugOpen) > opens the quest panel once on localhost and is guarded against re-firing  1072ms
+   ✓ ?booth=quest debug hook (main.js requestBoothDebugOpen) > does nothing for ?booth=quest on a non-localhost host  431ms
+   ✓ ?booth=quest debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  345ms
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player disconnected: TL3DH5BnNomlVbbjAAAB
+Player disconnected: 49eaqyG6ZVV7iP__AAAD
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[users] No existing user file at /tmp/hub-presence-int-users-1781767312330-1om0j2aexny.json — starting fresh
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > PATCH profile cosmetic syncs an existing live player record and snapshot
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312376-b1czmf2rhy7.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > PATCH profile cosmetic syncs an existing live player record and snapshot
+[users] Loaded 3 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > PATCH profile cosmetic syncs an existing live player record and snapshot
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781767312481-0d0zc03zf4vi.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+[users] Loaded 4 user record(s) from storage provider
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player connected: socket=fFv9gLVZRnWvEk1HAAAF, playerId=4b4be8c2-11b7-41f0-b26e-5d1da4b72ef6
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player connected: socket=11gDKIJApgoKoRbeAAAH, playerId=88e7fc12-ef7b-4f3d-9454-929e383f1e4a
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player disconnected: fFv9gLVZRnWvEk1HAAAF
+Player disconnected: 11gDKIJApgoKoRbeAAAH
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[users] No existing user file at /tmp/hub-presence-int-users-1781767312564-6c1yun6ixf.json — starting fresh
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Player connected: socket=_BxcBmLgTpWuUgtfAAAB, playerId=f190def3-8609-4b57-961d-1c76335815ad
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Player disconnected: _BxcBmLgTpWuUgtfAAAB
+
+ ✓ |server| server/test/cosmetic_runtime.test.js (7 tests) 681ms
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player connected: socket=EhtTozz2x8dDIi4QAAAJ, playerId=efe0107d-b3ed-44d2-9f06-4fc26943243f
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player connected: socket=DZNcabIjPumQUxLaAAAL, playerId=9e68661a-9a7d-49cb-9c3c-75d7dc540918
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player disconnected: EhtTozz2x8dDIi4QAAAJ
+Player disconnected: DZNcabIjPumQUxLaAAAL
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/hub_presence_integration.test.js (3 tests) 1004ms
+   ✓ hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics  562ms
+ ✓ |client| client/test/top-right-hud-layout.test.js (12 tests) 7057ms
+   ✓ top-right HUD layout (collision regression) > pre-fix absolute anchors would overlap (regression guard) > flags toolbar vs key-item collision at the old top:36px anchor  577ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 1: toolbar buttons do not overlap equipped dodge_roll key-item badge  526ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 2: lock-on panel does not overlap comms log when both are visible  451ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 3: quest comms toast does not overlap comms log line at level entry  1614ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > full visible top-right HUD matrix has no pairwise overlaps  1493ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > scenario 1: toolbar buttons do not overlap equipped dodge_roll key-item badge  790ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > scenario 2: lock-on panel does not overlap comms log when both are visible  543ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > scenario 3: quest comms toast does not overlap comms log line at level entry  518ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > full visible top-right HUD matrix has no pairwise overlaps  517ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (197 tests) 8725ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  640ms
+   ✓ auth overlay functions > exposes auth overlay functions on window  790ms
+   ✓ auth overlay functions > showAuthOverlay removes .hidden from #auth-overlay and hides lobby screens  431ms
+   ✓ auth overlay functions > hideAuthOverlay adds .hidden to #auth-overlay and shows the lobby browser  555ms
+   ✓ auth overlay functions > toolbar account button opens the account overlay  996ms
+   ✓ auth overlay functions > toolbar settings button opens the settings overlay  529ms
+   ✓ auth overlay functions > showRegisterForm shows register form and hides login form  332ms
+   ✓ auth overlay functions > showLoginForm shows login form and hides register form  303ms
+
+ Test Files  67 passed (67)
+      Tests  700 passed (700)
+   Start at  00:21:42
+   Duration  13.88s (transform 5.38s, setup 5.01s, collect 20.69s, tests 112.70s, environment 53.19s, prepare 14.62s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   34.45 |    19.58 |   43.42 |   36.46 |                       
+ client        |   38.33 |    28.43 |   62.16 |   41.63 |                       
+  cards.js     |   65.78 |    52.63 |      80 |   70.96 | ...94,102,116,235-251 
+  collision.js |   27.86 |    15.53 |   77.77 |   28.43 | ...75-229,238-243,251 
+  delta.js     |   66.66 |       50 |     100 |     100 | 12                    
+  hand.js      |   29.29 |    26.19 |   41.17 |   34.17 | 45-73,90-157,175-181  
+ server        |   33.05 |    15.69 |   37.39 |   34.81 |                       
+  index.js     |   33.05 |    15.69 |   37.39 |   34.81 | ...101-2102,2117-2399 
+---------------|---------|----------|---------|---------|-----------------------

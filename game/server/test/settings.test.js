@@ -75,6 +75,15 @@ describe('settings persistence', () => {
 		expect(s.soundEnabled).toBe(true);
 	});
 
+	it('updateSettings deep-merges keyboard.bindings.dodge', async () => {
+		const id = 'acct-dodge';
+		const result = await updateSettings(id, { keyboard: { bindings: { dodge: 'x' } } });
+		expect(result.ok).toBe(true);
+		const s = await getSettings(id);
+		expect(s.keyboard.bindings.dodge).toBe('x');
+		expect(s.soundEnabled).toBe(true);
+	});
+
 	it('updateSettings deep-merges gamepad.bindings.useKeyItem', async () => {
 		const id = 'acct-gp';
 		const result = await updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
@@ -323,9 +332,15 @@ describe('validateSettings', () => {
 	});
 
 	it('rejects unknown keyboard binding actions', () => {
-		const result = validateSettings({ keyboard: { bindings: { dodge: 'x' } } });
+		const result = validateSettings({ keyboard: { bindings: { lockOn: 'x' } } });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/Unknown keyboard binding action/);
+	});
+
+	it('accepts valid dodge keyboard binding', () => {
+		const result = validateSettings({ keyboard: { bindings: { dodge: 'x' } } });
+		expect(result.ok).toBe(true);
+		expect(result.value.keyboard.bindings.dodge).toBe('x');
 	});
 
 	it('rejects invalid keyboard binding keys', () => {

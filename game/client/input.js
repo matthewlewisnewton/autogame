@@ -50,15 +50,15 @@ const DEFAULT_KEYBOARD = {
 	toggleDeckViewer: ['v'],
 	useKeyItem: ['e'],
 	lockOn: ['z'],
-	dodge: [],
+	dodge: [' '],
 	interact: ['f'],
 };
 
-/** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes useKeyItem). */
+/** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes remappable actions). */
 export function getReservedKeys() {
 	const reserved = new Set();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
-		if (action === 'useKeyItem') continue;
+		if (action === 'useKeyItem' || action === 'dodge') continue;
 		for (const key of keys) {
 			const normalized = key.toLowerCase();
 			if (normalized) reserved.add(normalized);
@@ -88,13 +88,13 @@ const keyState = {
 	moveRight: false
 };
 
-/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} */
+/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onDodge?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} */
 let callbacks = {};
 let listenersAdded = false;
 const prevGamepadButtons = new Map();
 
 /**
- * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} opts
+ * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onDodge?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} opts
  */
 export function initInput(opts = {}) {
 	callbacks = opts;
@@ -118,9 +118,12 @@ function onKeyDown(e) {
 	const kbBindings = getKeyboardBindings();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
 		let matchedKeys = keys;
-		// For useKeyItem, check custom keyboard binding from settings first
+		// Remappable actions: check custom keyboard binding from settings first
 		if (action === 'useKeyItem' && kbBindings.useKeyItem) {
 			matchedKeys = [kbBindings.useKeyItem.toLowerCase()];
+		}
+		if (action === 'dodge' && kbBindings.dodge) {
+			matchedKeys = [kbBindings.dodge.toLowerCase()];
 		}
 		if (!matchedKeys.includes(key)) continue;
 		if (action.startsWith('move')) {
@@ -148,6 +151,11 @@ function onKeyDown(e) {
 		if (action === 'lockOn') {
 			e.preventDefault();
 			callbacks.onLockOn?.();
+			return;
+		}
+		if (action === 'dodge') {
+			e.preventDefault();
+			callbacks.onDodge?.();
 			return;
 		}
 		const slotMatch = action.match(/^useSlot(\d)$/);
@@ -526,6 +534,19 @@ export function getUseKeyItemBinding() {
 		gamepadHint = STANDARD_BUTTON_HINTS[gamepadIndex] ?? `Btn ${gamepadIndex}`;
 	}
 	return { keyboard: keyboardKey, gamepad: gamepadIndex, gamepadHint };
+}
+
+/**
+ * Resolved binding for dodge action.
+ * @returns {{ keyboard: string, display: string }}
+ */
+export function getDodgeBinding() {
+	const kbBindings = getKeyboardBindings();
+	const keyboard = kbBindings.dodge
+		? kbBindings.dodge.toLowerCase()
+		: (DEFAULT_KEYBOARD.dodge[0] ?? ' ');
+	const display = keyboard === ' ' ? 'SPACE' : keyboard.toUpperCase();
+	return { keyboard, display };
 }
 
 /**

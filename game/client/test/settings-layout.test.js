@@ -103,4 +103,13 @@ describe('settings layout in index.html', () => {
 		const keyInput = doc.getElementById('use-key-item-key-input');
 		expect(keyInput.readOnly).toBe(true);
 	});
+
+	it('includes dodge roll binding remap row in the Controls section', () => {
+		const doc = parseIndex();
+		expect(doc.getElementById('dodge-key-input')).not.toBeNull();
+		const dodgeInput = doc.getElementById('dodge-key-input');
+		expect(dodgeInput.readOnly).toBe(true);
+		const dodgeLabel = doc.querySelector('label[for="dodge-key-input"]');
+		expect(dodgeLabel?.textContent).toMatch(/Dodge roll/);
+	});
 });

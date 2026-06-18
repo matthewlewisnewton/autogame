@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): PASSED.** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` has only benign noise (pre-auth 401, a WS-closed warning, a 409 lobby-create race for player B). The captured probe deployed into `training_caverns` t1 via real flow (`debugScenario: null`) and the player **survived the opening fight at 86/100 HP**.
+
+**The fix.** The ticket's blocker was a near-unwinnable room 0 (two 100-HP / 10-dmg grunts spawn-camping a 17-dmg starter sword). The implementation:
+- Adds a per-spawn `hp`/`attackDamage` override path in `progression.js#spawnEnemy`, plumbed through `scriptedEncounters.js#spawnScriptedWave`.
+- Applies it to only the two room-0 wave-0 grunts in `quests.js`: `hp: 50` (was 100), `attackDamage: 7` (was 10).
+- Adds `training_caverns_room0_starter_fight.test.js` — a real-combat (no-godmode) kiting regression that asserts the player ends alive, both grunts dead, `defeatedEnemies >= 2`, and passage lock 0 unlocked.
+
+**Verification I ran:** the new fight test + identity test pass (9/9). `grep` confirmed the override is scoped to only those two grunts — all other rooms/waves keep default stats, the 6-enemy objective is unchanged, and no debug-scenario shortcut was introduced.
+
+**Gaps:** none. Filed one nit (lift the inline `50`/`7` balance literals into a named, commented constant) to `nits.md` for later cleanup — non-blocking.

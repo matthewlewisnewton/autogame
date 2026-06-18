@@ -87,7 +87,7 @@ describe('key item cooldown HUD', () => {
 		expect(el.classList.contains('ready')).toBe(true);
 		expect(el.classList.contains('cooldown')).toBe(false);
 		expect(el.querySelector('.key-item-hud-name').textContent).toBe('Dodge Roll');
-		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('E');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('SPACE');
 		expect(el.querySelector('.key-item-hud-cooldown').textContent).toBe('');
 	});
 
@@ -148,7 +148,7 @@ describe('key item cooldown HUD', () => {
 		expect(cooldownEl.textContent).toMatch(/^0\.[0-9]+$/);
 		expect(cooldownEl.textContent).toBe('0.7');
 		expect(nameEl.textContent).toBe('Dodge Roll');
-		expect(keybindEl.textContent).toBe('E');
+		expect(keybindEl.textContent).toBe('SPACE');
 
 		window.__updateKeyItemCooldownHud(0);
 		expect(el.classList.contains('cooldown')).toBe(false);

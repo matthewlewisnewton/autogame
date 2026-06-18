@@ -210,4 +210,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3](tickets/421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/)
 - [ ] [421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw](tickets/421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/)
 - [ ] [422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa](tickets/422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/)
+- [ ] [423-cleanup-playability-first-level-initiate-vault-training-caverns-t1-i-76x8](tickets/423-cleanup-playability-first-level-initiate-vault-training-caverns-t1-i-76x8/)
+- [ ] [423-cleanup-playability-no-default-keybinding-for-dodge-training-dialogu-ew2s](tickets/423-cleanup-playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/)
+- [ ] [423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m](tickets/423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/)
 - [ ] [423-cleanup-playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f](tickets/423-cleanup-playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/)

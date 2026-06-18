@@ -1,0 +1,11 @@
+Split the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **01 — Wire default binding** — Space → `onDodge` → `useKeyItem` with `dodge_roll`, plus HUD label fix. Unblocks playability immediately.
+2. **02 — Settings rebind** — Server schema, client override path, Settings UI row, docs, and tests. Depends on 01’s dodge action existing.
+
+Both use **code** verification (handlers, schema, structure, persistence — not purely visual).
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/tickets/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/subtickets/01-wire-default-dodge-binding/`
+- `/home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/tickets/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/subtickets/02-dodge-rebind-in-settings/`

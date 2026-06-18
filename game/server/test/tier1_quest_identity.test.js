@@ -76,8 +76,8 @@ describe('tier-1 quest identity wiring', () => {
     const startRoom = quest.scriptedEncounters.rooms.find((r) => r.roomIndex === 0);
     expect(startRoom.waves).toHaveLength(1);
     expect(startRoom.waves[0].spawns).toEqual([
-      { type: 'grunt', count: 1, towardPassage: true },
-      { type: 'grunt', count: 1, towardPassage: true },
+      { type: 'grunt', count: 1, towardPassage: true, hp: 50, attackDamage: 7 },
+      { type: 'grunt', count: 1, towardPassage: true, hp: 50, attackDamage: 7 },
     ]);
     expect(countAuthoredScriptedEnemies(quest)).toBeGreaterThanOrEqual(6);
     expect(countAuthoredScriptedEnemies(quest)).toBeLessThanOrEqual(10);

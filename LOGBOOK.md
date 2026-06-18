@@ -9268,6 +9268,75 @@ which I ran independently, and the captured run starts/loads cleanly.
 None blocking. The captured run is clean and proves the reported bug is fixed (suspend instead of fail, resumable, state preserved); all relevant unit tests pass.
 
 
+## v0.492 — playability: first level (Initiate Vault / training_caverns t1) is near-unwinnable from cold start — player dies in room 0 before killing a single grunt  (2026-06-18 00:17:00)
+
+**3. No debug-scenario shortcut introduced — MET.**
+The repro and capture both run the genuine cold-start flow; `debugScenario` is `null`. No new
+`?debugScenario=` entry point was added, so the debug-scenario invariants do not apply.
+
+**4. Consistency with design / no regression — MET.**
+`design.md` describes Initiate Vault as a scripted annex sweep with passage locks and a 6-enemy
+sweep objective — all preserved. `tier1_quest_identity.test.js` was updated to match the new spawn
+defs and still asserts quest identity, objective wiring, and authored enemy count. Full server
+identity + fight suite: 9/9 passing.
+
+**5. Code quality — MET.**
+The override is a small, well-documented addition (JSDoc on the `@property` entries). No dead code,
+no console errors, no obvious bugs. The regression test is thorough and deterministic (fake timers,
+fixed seed).
+
+## Remaining gaps
+None. The captured run is clean, the opening fight is now survivable in real flow, and a real-combat
+regression test locks in the clear. Rooms 1–2 retain default grunt stats by design; the ticket's
+blocker was specifically the room-0 spawn camp, which is resolved.
+
+
+## v0.493 — playability: no default keybinding for Dodge — training dialogue tells player to 'dodge roll' but the dodge action has no key and is not bindable in Settings  (2026-06-18 00:24:09)
+
+- Default Space → `onDodge` and `canUseGameActions` gate (`input.test.js`)
+- Custom dodge override (`input.test.js`)
+- `getDodgeBinding()` defaults and override display
+- Settings layout row (`settings-layout.test.js`)
+- Dodge key capture accept/reject (`main.test.js`)
+- Server schema accept/reject for `keyboard.bindings.dodge` (`settings.test.js`)
+- HUD label for dodge_roll (`key-item-dodge.test.js`)
+
+`getReservedKeys()` intentionally excludes `dodge` (like `useKeyItem`) so remapped dodge keys are not double-reserved — consistent with sub-ticket 02 and covered by an updated test expectation.
+
+## Integration notes (non-blocking)
+
+- **Dual activation paths:** With `dodge_roll` equipped, both **Space** (`onDodge`) and **E** (`onUseKeyItem` → equipped item) can trigger dodge. This is reasonable — Space is the dedicated dodge binding; E remains the generic key-item action.
+- **`onDodge` always emits `dodge_roll`:** Space triggers dodge even if another key item were equipped later. That matches a dedicated dodge binding and is outside this ticket's training-caverns scope.
+- **Gamepad:** Dodge on gamepad still routes through the existing `useKeyItem` gamepad binding (D-pad Down). Keyboard was the reported gap; gamepad was already wired.
+
+## Remaining gaps
+
+None. All acceptance criteria from both sub-tickets and the top-level playability goal are satisfied with live capture proof and passing tests.
+
+
+## v0.494 — playability/ux: hub deck HUD always shows 'Deck: 0/0' (never updates in lobby), implying player has no deck and cannot deploy  (2026-06-18 00:24:23)
+
+
+### 8. Debug scenarios
+
+**N/A.** No new `?debugScenario=` shortcuts were added.
+
+## Code quality
+
+- Minimal, focused diff across three files; reuses existing `updateDeckStats` / `computeDeckHudStats` pipeline.
+- In-run `playing` path unchanged.
+- `stateHandlers.js` line-128 comment ("MS/deck/portrait in-run only") is now stale — deck stats also update in lobby via `syncVanguardHud`; cosmetic only (see nits).
+
+## Capture notes
+
+- Fallback capture plan (`capturePlanSource: "fallback"`) still probes only `playing` phase for deck text, but hub screenshot `01-initial.png` provides direct visual proof of the lobby fix.
+- Playing-phase deck counts (`8/12`, `7/12`) confirm no in-run regression.
+
+## Remaining gaps
+
+None. Round-1's blocking CSS hide was resolved in commit `d795a6e7`; JS wiring from `13200844` is now player-visible.
+
+
 ## v0.495 — playability/ux: Launch Bay ready-up failure (invalid deck) gives NO visible feedback — error written to hidden deck-editor panel  (2026-06-18 00:25:36)
 
 ### AC1 — Invalid-deck ready-up at Launch Bay surfaces clear on-screen feedback

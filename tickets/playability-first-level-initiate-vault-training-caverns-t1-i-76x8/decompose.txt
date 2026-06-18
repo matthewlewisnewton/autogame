@@ -1,0 +1,12 @@
+Created **2 sub-tickets** in dependency order:
+
+1. **`01-room0-grunt-tutorial-stats`** — Adds quest-local spawn stat overrides (`hp`, `attackDamage`) and tunes room-0 grunts down without touching global `ENEMY_DEFS.grunt` or later rooms.
+
+2. **`02-room0-starter-fight-regression`** — Adds a vitest that deploys Initiate Vault tier 1, fights room 0 with a real starter `iron_sword` (no godmode), and asserts the player survives, both grunts die, and the first passage lock opens.
+
+Both use **`code`** verification — acceptance criteria cover server state, handlers, structure, and combat behavior, not pixel-level rendering.
+
+### Sub-ticket folder paths
+
+- `/home/matt/workspace/.autogame-worktrees/playability-first-level-initiate-vault-training-caverns-t1-i-76x8/tickets/playability-first-level-initiate-vault-training-caverns-t1-i-76x8/subtickets/01-room0-grunt-tutorial-stats/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/playability-first-level-initiate-vault-training-caverns-t1-i-76x8/tickets/playability-first-level-initiate-vault-training-caverns-t1-i-76x8/subtickets/02-room0-starter-fight-regression/ticket.md`

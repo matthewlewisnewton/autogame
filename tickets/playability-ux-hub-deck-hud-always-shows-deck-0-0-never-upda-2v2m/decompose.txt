@@ -1,0 +1,6 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created sub-ticket:
+
+- `/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/tickets/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/subtickets/02-show-deck-stats-panel-in-lobby/ticket.md`
+
+This single sub-ticket closes the one remaining gap from the review: removing `#deck-stats-panel` from the `body[data-phase="lobby"]` CSS hide rule so the deck HUD is visible in the 3D hub.
