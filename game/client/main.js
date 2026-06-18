@@ -51,6 +51,7 @@ import {
 	getAttackCastHint,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
+	getDodgeBinding,
 	getReservedKeys,
 } from './input.js';
 import { createAttackHintDismisser } from './attackHintDismiss.js';
@@ -1310,6 +1311,11 @@ initInput({
 				socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: me.equippedKeyItemId });
 			}
 		}
+	},
+	onDodge: () => {
+		if (!socket) return;
+		if (isLocalPlayerCardCommitted()) return;
+		socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: 'dodge_roll' });
 	},
 	onLockOn: () => applyLockOnPress(),
 	// Hub booth interaction — not gated behind canUseGameActions so it fires in
@@ -3224,9 +3230,13 @@ function renderKeyItemHud(me, gamePhase) {
 	setKeyItemHudIcon(icon, equippedId);
 	nameEl.textContent = def.name;
 
-	const binding = getUseKeyItemBinding();
 	const { mode } = getHandSlotInputHints();
-	keybindEl.textContent = mode === 'gamepad' ? binding.gamepadHint : binding.keyboard.toUpperCase();
+	if (equippedId === 'dodge_roll' && mode === 'keyboard') {
+		keybindEl.textContent = getDodgeBinding().display;
+	} else {
+		const binding = getUseKeyItemBinding();
+		keybindEl.textContent = mode === 'gamepad' ? binding.gamepadHint : binding.keyboard.toUpperCase();
+	}
 
 	updateKeyItemCooldownHud(getKeyItemCooldownRemainingMs(me));
 }

@@ -10,6 +10,7 @@ import {
 	getHandSlotGamepadHints,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
+	getDodgeBinding,
 	getReservedKeys,
 	ACTIONS
 } from '../input.js';
@@ -38,7 +39,7 @@ describe('input.js', () => {
 	it('getReservedKeys lists fixed keyboard bindings and excludes useKeyItem', () => {
 		const reserved = getReservedKeys();
 		expect(reserved).toEqual(
-			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z', 'f']),
+			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z', ' ', 'f']),
 		);
 		expect(reserved.has('e')).toBe(false);
 	});
@@ -317,6 +318,42 @@ describe('input.js', () => {
 		});
 		expect(ACTIONS.lockOn).toBe('lockOn');
 		expect(ACTIONS.dodge).toBe('dodge');
+	});
+
+	it('keyboard Space triggers onDodge by default', () => {
+		const onDodge = vi.fn();
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onDodge,
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+		expect(onDodge).toHaveBeenCalledTimes(1);
+		expect(onUseKeyItem).not.toHaveBeenCalled();
+	});
+
+	it('dodge respects canUseGameActions gate', () => {
+		const onDodge = vi.fn();
+		initInput({
+			onDodge,
+			canUseGameActions: () => false,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+		expect(onDodge).not.toHaveBeenCalled();
+
+		initInput({
+			onDodge,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+		expect(onDodge).toHaveBeenCalledTimes(1);
+	});
+
+	it('getDodgeBinding returns Space/SPACE by default', () => {
+		const binding = getDodgeBinding();
+		expect(binding.keyboard).toBe(' ');
+		expect(binding.display).toBe('SPACE');
 	});
 
 	it('exposes labels and defaults for all six hand slots', () => {

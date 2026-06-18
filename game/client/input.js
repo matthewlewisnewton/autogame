@@ -50,7 +50,7 @@ const DEFAULT_KEYBOARD = {
 	toggleDeckViewer: ['v'],
 	useKeyItem: ['e'],
 	lockOn: ['z'],
-	dodge: [],
+	dodge: [' '],
 	interact: ['f'],
 };
 
@@ -88,13 +88,13 @@ const keyState = {
 	moveRight: false
 };
 
-/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} */
+/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onDodge?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} */
 let callbacks = {};
 let listenersAdded = false;
 const prevGamepadButtons = new Map();
 
 /**
- * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} opts
+ * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onDodge?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} opts
  */
 export function initInput(opts = {}) {
 	callbacks = opts;
@@ -148,6 +148,11 @@ function onKeyDown(e) {
 		if (action === 'lockOn') {
 			e.preventDefault();
 			callbacks.onLockOn?.();
+			return;
+		}
+		if (action === 'dodge') {
+			e.preventDefault();
+			callbacks.onDodge?.();
 			return;
 		}
 		const slotMatch = action.match(/^useSlot(\d)$/);
@@ -526,6 +531,16 @@ export function getUseKeyItemBinding() {
 		gamepadHint = STANDARD_BUTTON_HINTS[gamepadIndex] ?? `Btn ${gamepadIndex}`;
 	}
 	return { keyboard: keyboardKey, gamepad: gamepadIndex, gamepadHint };
+}
+
+/**
+ * Resolved binding for dodge action.
+ * @returns {{ keyboard: string, display: string }}
+ */
+export function getDodgeBinding() {
+	const keyboard = DEFAULT_KEYBOARD.dodge[0] ?? ' ';
+	const display = keyboard === ' ' ? 'SPACE' : keyboard.toUpperCase();
+	return { keyboard, display };
 }
 
 /**
