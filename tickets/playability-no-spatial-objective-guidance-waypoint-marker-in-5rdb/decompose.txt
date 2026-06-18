@@ -1,0 +1,15 @@
+Created **2 sub-tickets** in dependency order. Together they add pure navigation helpers, then a screen-edge compass wired into the collect_items run lifecycle — enough to address blind prism hunting in open/maze layouts like `crystal_rescue` tier 1.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/tickets/playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/subtickets/01-objective-nav-helpers/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/tickets/playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/subtickets/02-objective-compass-indicator/ticket.md`
+
+**Breakdown:**
+
+| # | Focus | Delivers |
+|---|--------|----------|
+| `01` | `objectiveNav.js` pure helpers + unit tests | Nearest quest-critical crystal selection and bearing math |
+| `02` | `#objective-nav-indicator` UI + `main.js` wiring + tests | Visible compass arrow during active `collect_items` runs |
+
+No existing sub-tickets were present (nothing to retire). Both use **code** verification since acceptance criteria cover DOM structure, show/hide logic, rotation behavior, and test coverage — not pixel-perfect rendering alone.

@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): clean.** `metrics.json` has `ok: true`, `pageerrors: []`, no `harness_failure`. `console.log` shows only benign auth/connect-race noise (a transient 401 + WS-closed-before-connect, then normal scene init). Full client suite passes (369 tests), including the 18 new tests.
+
+**Feature is correct and well-integrated:**
+- `objectiveNav.js` adds pure, unit-tested helpers (nearest quest-critical crystal, world bearing via `atan2(dz,dx)`, screen-relative arrow rotation via shortest-arc — no ±π flip).
+- `updateObjectiveNavIndicator()` renders a rotating compass arrow + distance readout pointing at the nearest uncollected prism during `collect_items` runs, driven every frame via rAF and on each state/run event.
+- Gating is robust: hides outside `playing`, for non-`collect_items` objectives, when all collected, when no crystal remains, and in lobby (CSS).
+- **Zero server changes** — it consumes the pre-existing authoritative loot contract (`kind:'crystal'`, `questCritical:true`, `collectedItems`/`totalItems`), which I verified exists in `progression.js`/`objectives.js` and is shipped unstripped.
+
+**Capture caveat (non-blocking):** the fallback smoke ran a `defeat_enemies`/`crowded` run, so no screenshot directly shows the compass — but the indicator correctly stayed hidden for that run (matching the code), the logic is fully unit-tested, and sub-ticket 02 visually QA'd it.
+
+**No blocking gaps**, so no `gaps.md`. Wrote three non-blocking items to `nits.md` (use predicted vs server position for smoother tracking; optionally extend guidance to find/reach objectives; "screen-edge" naming vs actual bottom-center placement).

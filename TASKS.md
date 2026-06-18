@@ -214,3 +214,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [423-cleanup-playability-no-default-keybinding-for-dodge-training-dialogu-ew2s](tickets/423-cleanup-playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/)
 - [ ] [423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m](tickets/423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/)
 - [ ] [423-cleanup-playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f](tickets/423-cleanup-playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/)
+- [ ] [424-cleanup-playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb](tickets/424-cleanup-playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/)

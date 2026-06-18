@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-no-spatial-objective-guidance-waypoint-marker-in-5rdb/game/data
+[users] Loaded 1 user record(s) from storage provider
+Server listening on port 3005
+Player connected: socket=0NddEKBlDVKouL6vAAAD, playerId=a9cba624-0e86-4133-9433-46fe92a9301a
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=GXdIipN-wJNOdb_bAAAH, playerId=e2168d6d-bac1-4145-a65c-9ba4cac44efc
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=da3455a9-446d-4dac-b266-82db5cc51ed1 value=15
+Player disconnected: 0NddEKBlDVKouL6vAAAD
+Player disconnected: GXdIipN-wJNOdb_bAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
