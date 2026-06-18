@@ -1,0 +1,14 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **`01-surface-deck-error-toast-when-editor-hidden`** — Primary fix: route `DECK_ERROR` to a visible toast when `#deck-editor` is hidden, keep inline `#deck-error` when the editor is open, add a vitest regression.
+
+2. **`02-fix-launch-booth-ready-desync-on-deck-error`** — Secondary fix: stop optimistic `isReady = true` in `launchBoothReadyUp()`, add pending/confirmed-ready gating, reset on `DECK_ERROR`, only log/dispatch success after server confirms via `LOBBY_UPDATE`.
+
+Both use **`## Verification: code`** (behavior, handlers, state, and tests — not purely visual rendering).
+
+### Created sub-ticket paths
+
+```
+/home/matt/workspace/.autogame-worktrees/playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/tickets/playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/subtickets/01-surface-deck-error-toast-when-editor-hidden/ticket.md
+/home/matt/workspace/.autogame-worktrees/playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/tickets/playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/subtickets/02-fix-launch-booth-ready-desync-on-deck-error/ticket.md
+```

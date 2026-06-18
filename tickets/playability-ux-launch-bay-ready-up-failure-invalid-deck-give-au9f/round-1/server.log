@@ -1,0 +1,13 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-ux-launch-bay-ready-up-failure-invalid-deck-give-au9f/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3004
+Player connected: socket=r77Lm47AD7ZwtQWhAAAD, playerId=1b9c1557-6d9b-4d74-bf84-cc2f9acecccb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=aIT1C0FNQLvnSmfjAAAH, playerId=15b3895e-d438-489b-83c1-fc5d2ee461d3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: r77Lm47AD7ZwtQWhAAAD
+Player disconnected: aIT1C0FNQLvnSmfjAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

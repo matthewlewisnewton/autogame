@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fixes the silent Launch Bay ready-up failure on an invalid deck. I verified the live working tree, the diff against `99007f0d`, and the captured run.
+
+**Runtime health (gate):** `metrics.json` is `ok: true` with empty `pageerrors`, no `harness_failure`, servers up, healthy probes. `console.log` shows only benign auth/join 401/409 resource responses — no game page errors or fatals. Game runs and loads cleanly.
+
+**Acceptance criteria — both met:**
+- **Visible feedback:** `showDeckError` now raises a red transient toast when `#deck-editor` is hidden, mapping the server's `Deck must have at least 4 cards` to the ticket's exact requested copy (`Deck too small — open the Deck booth (need 4+ cards)`). No toast when the editor is open (inline message already shows).
+- **No ready desync:** `launchBoothReadyUp` no longer optimistically sets `isReady`; it sets `launchReadyPending`, emits `PLAYER_READY`, and only promotes after the server's `LOBBY_UPDATE` ack. `DECK_ERROR` resets both flags. Idempotent against repeat touches. Server (`deckHandlers.js:246`) broadcasts the lobby update before `checkAllReady`, so the success ack is reliable.
+
+**Debug scenario** `launch-bay-invalid-deck` passes all three checks: gated behind the registry/URL param only, the end-state is reachable through normal Deck-booth card removal, and it doesn't bypass server-side `validateDeck`.
+
+**Tests:** 207 client + 78 server (debug scenarios/gate) tests pass, with new tests directly covering the toast and the ready lifecycle.
+
+Two non-blocking nits recorded in `nits.md` (no dedicated test for the new scenario; toast only humanizes the min-size error). No `gaps.md` written since the verdict is PASS.
