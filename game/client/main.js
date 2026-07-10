@@ -1200,6 +1200,7 @@ const storedPlayerId = (() => {
 })();
 
 let socket = null;
+const retiredSockets = new WeakSet();
 /** @type {{ lobbyId: string, instanceId: string | null } | null} */
 let pendingLobbyJoin = null;
 let pendingLobbyJoinSentSocketId = null;
@@ -1266,6 +1267,7 @@ function createSocket(options) {
 	if (socket) {
 		stopHeartbeat();
 		clearConnectWatchdog();
+		retiredSockets.add(socket);
 		socket.disconnect();
 	}
 	const affinity = options && typeof options === 'object' ? options : {};
@@ -1530,7 +1532,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	startConnectWatchdog,
 	startHeartbeat,
 	stopHeartbeat,
-	isCurrentSocket: (candidate) => socket === candidate,
+	isCurrentSocket: (candidate) => !retiredSockets.has(candidate),
 	updateStatus,
 	statusEl,
 	showLobbyBrowserError,
