@@ -209,6 +209,13 @@ async function main() {
 	try {
 		await loginInBrowser(page, SCENARIO_URL, username);
 		await createLobbyAndDeploy(page);
+		// Keep the extraction traversal deterministic: scene-reset correctness is
+		// the target here, not surviving enemy damage while walking to the pipe.
+		await page.evaluate(() => window.__toggleDebugGodmodeForTest?.());
+		await page.waitForFunction(() => {
+			const h = window.__AUTOGAME_HARNESS_STATE__?.();
+			return h?.debugGodmodeResult?.ok && h.debugGodmodeResult.enabled === true;
+		}, { timeout: 10000 });
 
 		const preState = await readHarness(page);
 		assert(preState.hand?.[0]?.id === 'telepipe',
