@@ -47,11 +47,13 @@ export function createSocketHandlerCtx(deps) {
 		startConnectWatchdog: deps.startConnectWatchdog,
 		startHeartbeat: deps.startHeartbeat,
 		stopHeartbeat: deps.stopHeartbeat,
+		isCurrentSocket: deps.isCurrentSocket,
 		updateStatus: deps.updateStatus,
 		statusEl: deps.statusEl,
 		showLobbyBrowserError: deps.showLobbyBrowserError,
 		disposeAllLootMeshes: deps.disposeAllLootMeshes,
 		setAuthToken: deps.setAuthToken,
+		resetClientSessionState: deps.resetClientSessionState,
 		uiEl: deps.uiEl,
 		giveUpBtnEl: deps.giveUpBtnEl,
 		cardHandEl: deps.cardHandEl,
@@ -225,6 +227,7 @@ export function createSocketHandlerCtx(deps) {
 		showQuestDialogueToast: deps.showQuestDialogueToast,
 		applyDebugTimeScale: deps.applyDebugTimeScale,
 		emitPendingLobbyJoin: deps.emitPendingLobbyJoin,
+		clearPendingLobbyJoin: deps.clearPendingLobbyJoin,
 		handleLobbyDeepLinkAfterInit: deps.handleLobbyDeepLinkAfterInit,
 	};
 

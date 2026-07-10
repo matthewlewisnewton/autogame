@@ -4,6 +4,7 @@ import { bindLobbyHandlers } from '../socketHandlers/lobbyHandlers.js';
 import { bindCardHandlers } from '../socketHandlers/cardHandlers.js';
 import { bindLobbyBrowserHandlers } from '../socketHandlers/lobbyBrowserHandlers.js';
 import { emitVolatile } from '../renderer.js';
+import { createSocketHandlerCtx } from '../socketHandlers/socketHandlerCtx.js';
 
 function recordingSocket() {
 	const listeners = new Map();
@@ -47,6 +48,18 @@ function stateContext() {
 }
 
 describe('networking socket handlers', () => {
+	it('forwards networking lifecycle hooks through the shared context', () => {
+		const hooks = {
+			isCurrentSocket: vi.fn(),
+			resetClientSessionState: vi.fn(),
+			clearPendingLobbyJoin: vi.fn(),
+		};
+		const ctx = createSocketHandlerCtx({ state: {}, ...hooks });
+		expect(ctx.isCurrentSocket).toBe(hooks.isCurrentSocket);
+		expect(ctx.resetClientSessionState).toBe(hooks.resetClientSessionState);
+		expect(ctx.clearPendingLobbyJoin).toBe(hooks.clearPendingLobbyJoin);
+	});
+
 	it('does not rerender an unchanged preserved hand on a hot snapshot', () => {
 		const socket = recordingSocket();
 		const ctx = stateContext();
