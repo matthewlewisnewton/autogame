@@ -1202,6 +1202,7 @@ const storedPlayerId = (() => {
 let socket = null;
 /** @type {{ lobbyId: string, instanceId: string | null } | null} */
 let pendingLobbyJoin = null;
+let pendingLobbyJoinSentSocketId = null;
 let lastConnectedFlyInstanceId = null;
 
 const deepLinkLobbyParam = urlSearchParams.get('lobby');
@@ -1214,17 +1215,21 @@ if (deepLinkLobbyParam) {
 
 function emitPendingLobbyJoin(sock = socket) {
 	if (!pendingLobbyJoin || !sock) return;
+	if (pendingLobbyJoinSentSocketId === sock.id) return;
 	sock.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: pendingLobbyJoin.lobbyId });
+	pendingLobbyJoinSentSocketId = sock.id ?? null;
 }
 
 function clearPendingLobbyJoin() {
 	pendingLobbyJoin = null;
+	pendingLobbyJoinSentSocketId = null;
 }
 
 function requestJoinLobby(lobby) {
 	if (!lobby || !lobby.id) return;
 
 	pendingLobbyJoin = { lobbyId: lobby.id, instanceId: lobby.instanceId ?? null };
+	pendingLobbyJoinSentSocketId = null;
 
 	if (lobby.instanceId) {
 		createSocket({ lobbyId: lobby.id, flyInstanceId: lobby.instanceId });

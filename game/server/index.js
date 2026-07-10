@@ -1931,7 +1931,11 @@ function runGameLoopTick() {
 
         if (!state._applyingDebugScenario) {
           const snapshot = hotStateSnapshot();
-          io.to(lobby.id).volatile.emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+          const room = io.to(lobby.id);
+          const target = room.volatile && typeof room.volatile.emit === 'function'
+            ? room.volatile
+            : room;
+          target.emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
         }
         return pendingWindups;
       });
