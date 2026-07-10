@@ -56,3 +56,38 @@ export const escortHealthBars = {}; // escort minion id → persistent floating 
 export const spikeTrapMeshes = {};
 export const lootMeshes = {};
 export const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
+
+/** All keyed id→Object3D maps owned by this module — forgotten in bulk on world reset. */
+export const KEYED_MESH_MAPS = [
+	playersMeshes,
+	playerShadows,
+	playerNameplates,
+	enemyNameplates,
+	enemiesMeshes,
+	enemyHealthBars,
+	enemyShieldBars,
+	enemyHitboxMeshes,
+	enemyShadows,
+	telegraphMeshes,
+	minionTelegraphMeshes,
+	enemyLockOnRings,
+	variantMarkerMeshes,
+	frenziedTelegraphMeshes,
+	enemySlowMarkers,
+	playerSlowMarkers,
+	enemyBurnMarkers,
+	playerBurnMarkers,
+	minionsMeshes,
+	minionShadows,
+	escortHealthBars,
+	spikeTrapMeshes,
+	lootMeshes,
+	iceBallMeshes,
+];
+
+/** Drop every keyed mesh-map record without disposing (scene-graph already abandoned). */
+export function forgetKeyedMeshMaps() {
+	for (const map of KEYED_MESH_MAPS) {
+		for (const id of Object.keys(map)) delete map[id];
+	}
+}

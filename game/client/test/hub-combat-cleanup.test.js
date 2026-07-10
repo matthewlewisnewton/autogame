@@ -29,7 +29,7 @@ describe('hub scene world reset', () => {
 		return { x: start.x, z: start.z };
 	}
 
-	it('resetSceneWorld replaces the scene root and drops quest enemy meshes', async () => {
+	it('resetSceneWorld abandons the old scene tree without leaving keyed combat maps', async () => {
 		const hubLayout = generateHub(0);
 		const questLayout = generateLayout(42, 'default');
 		const {
@@ -41,6 +41,7 @@ describe('hub scene world reset', () => {
 			getMeshMaps,
 			getScene,
 			animate,
+			spawnDamageNumber,
 		} = await import('../renderer.js');
 
 		setGamePhase('playing');
@@ -51,24 +52,27 @@ describe('hub scene world reset', () => {
 			gamePhase: 'playing',
 			layout: questLayout,
 			players: { p1: { x: questSpawn.x, z: questSpawn.z, hp: 100, dead: false } },
-			loot: [],
+			loot: [{ id: 'l1', x: questSpawn.x, z: questSpawn.z, value: 2, kind: 'currency' }],
 			enemies: [
 				{ id: 'e1', type: 'grunt', x: questSpawn.x + 2, z: questSpawn.z, hp: 30, maxHp: 30 },
 			],
 			minions: [],
 		});
 		animate(0);
-		expect(getMeshMaps().enemiesMeshes.e1).toBeTruthy();
+		spawnDamageNumber(1, 1, 1, 9, '#ff0000', false);
 		const questScene = getScene();
-		expect(questScene).toBeTruthy();
+		expect(questScene.children.length).toBeGreaterThan(0);
+		expect(getMeshMaps().enemiesMeshes.e1).toBeTruthy();
+		expect(getMeshMaps().lootMeshes.l1).toBeTruthy();
 		const canvasCountBefore = document.querySelectorAll('canvas').length;
 
 		resetSceneWorld(hubLayout);
 		expect(getScene()).not.toBe(questScene);
-		expect(getMeshMaps().enemiesMeshes.e1).toBeUndefined();
+		expect(questScene.children.length).toBe(0);
 		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
+		expect(Object.keys(getMeshMaps().lootMeshes)).toHaveLength(0);
 		expect(Object.keys(getMeshMaps().playersMeshes)).toHaveLength(0);
-		// WebGLRenderer / canvas reused — no second canvas.
+		expect([...document.body.querySelectorAll('div')].some((el) => el.textContent === '-9')).toBe(false);
 		expect(document.querySelectorAll('canvas').length).toBe(canvasCountBefore);
 	});
 

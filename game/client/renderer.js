@@ -99,7 +99,7 @@ import {
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getEntityWorldY } from './entityWorldY.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
-import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe } from './models.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe, abandonObject3DTree, markObjectMaterialsShared } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
@@ -131,6 +131,7 @@ import {
 	spikeTrapMeshes,
 	lootMeshes,
 	iceBallMeshes,
+	forgetKeyedMeshMaps,
 } from './renderer/rendererState.js';
 import {
 	syncEnemyMeshes,
@@ -223,6 +224,8 @@ import {
 	disposeLootMeshMaterials,
 	resetLootSyncState,
 	clearTelepipePortal,
+	forgetLootSyncState,
+	forgetTelepipePortal,
 } from './renderer/lootSync.js';
 
 // Loot-domain + ice-ball + telepipe-portal sync now lives in
@@ -430,88 +433,44 @@ export function disposeRenderer() {
 }
 
 /**
- * Dispose combat/world entity meshes (enemies, minions, loot, VFX, …).
- * Does not touch player avatars or dungeon geometry — use clearSceneOwnedContent
- * / resetSceneWorld for a full world restart.
- */
-function clearWorldEntityMeshes() {
-	const sc = scene || getScene();
-	disposeMeshMap(enemiesMeshes, sc);
-	disposeMeshMap(enemyHealthBars, sc);
-	disposeMeshMap(enemyShieldBars, sc);
-	disposeMeshMap(enemyHitboxMeshes, sc);
-	disposeMeshMap(enemyShadows, sc);
-	disposeMeshMap(telegraphMeshes, sc);
-	disposeMeshMap(minionTelegraphMeshes, sc);
-	disposeMeshMap(enemyLockOnRings, sc);
-	disposeMeshMap(variantMarkerMeshes, sc);
-	disposeMeshMap(frenziedTelegraphMeshes, sc);
-	disposeMeshMap(enemySlowMarkers, sc);
-	disposeMeshMap(enemyBurnMarkers, sc);
-	disposeMeshMap(minionsMeshes, sc);
-	disposeMeshMap(minionShadows, sc);
-	disposeMeshMap(escortHealthBars, sc);
-	disposeMeshMap(spikeTrapMeshes, sc);
-	disposeMeshMap(iceBallMeshes, sc);
-	disposeMeshMap(playerCardWindupMarkers, sc);
-	disposeMeshMap(playerSlowMarkers, sc);
-	disposeMeshMap(playerBurnMarkers, sc);
-	for (const id of Object.keys(enemyNameplates)) {
-		disposeEnemyNameplate(id);
-	}
-	disposeAllLootMeshes();
-	clearTelepipePortal();
-
-	const attackEffectCtx = { mirrorWardShellsByPlayer };
-	for (let i = activeEffects.length - 1; i >= 0; i--) {
-		disposeAttackEffect(activeEffects[i], activeEffects, i, attackEffectCtx);
-	}
-	mirrorWardShellsByPlayer.clear();
-	windupFlashing.clear();
-	playerCardWindupFlashing.clear();
-	clearAllLockOnState();
-	lockOnToTarget = null;
-	lockOnReleaseLookAt = null;
-}
-
-/**
- * Dispose every Object3D the renderer parents under the live scene, and empty
- * the keyed mesh maps. Also flushes floating damage-number DOM nodes. Keeps the
- * WebGLRenderer / camera / animate loop so a fresh THREE.Scene can be attached
- * immediately (see resetSceneWorld).
+ * Abandon the live scene graph at the root and forget all keyed mesh-map
+ * records. GPU cleanup is one traverse of the old THREE.Scene (via
+ * abandonObject3DTree); map tables are emptied in bulk so new entity types do
+ * not need a new dispose line here. Also flushes floating damage-number DOM
+ * nodes and non-Object3D combat bookkeeping.
  */
 function clearSceneOwnedContent() {
 	for (const dn of damageNumbers) dn.element?.remove();
 	damageNumbers.length = 0;
 
 	const sc = scene || getScene();
-	clearWorldEntityMeshes();
+	if (sc) abandonObject3DTree(sc);
 
-	for (const id of Object.keys(playersMeshes)) {
-		const mesh = playersMeshes[id];
-		if (sc && mesh) sc.remove(mesh);
-		if (mesh) disposeAvatar(mesh);
-		delete playersMeshes[id];
-	}
-	disposeMeshMap(playerShadows, sc);
-	for (const id of Object.keys(playerNameplates)) {
-		disposeNameplate(id);
-	}
+	// Records only — meshes/materials already released by the tree walk.
+	forgetKeyedMeshMaps();
+	for (const id of Object.keys(playerCardWindupMarkers)) delete playerCardWindupMarkers[id];
+	for (const id of Object.keys(passageGateMeshes)) delete passageGateMeshes[id];
+	dungeonMeshes.length = 0;
+	forgetLootSyncState();
+	forgetTelepipePortal();
+	lootPickupAttempts.clear();
 
-	clearPassageGateMeshes();
-	clearDungeon(sc, dungeonMeshes);
+	activeEffects.length = 0;
+	mirrorWardShellsByPlayer.clear();
+	windupFlashing.clear();
+	playerCardWindupFlashing.clear();
+	enemyDamageFlash.clear();
+	clearAllLockOnState();
+	lockOnToTarget = null;
+	lockOnReleaseLookAt = null;
+
 	activePassageLocksKey = '';
 	activePassageGateLocksKey = '';
 	wallColliders = [];
 	walkableAABBs = [];
 	dungeonBounds = null;
 	activeLayout = null;
-
-	if (phaseStepAllyRing) {
-		if (sc) sc.remove(phaseStepAllyRing);
-		disposeMeshTreeSafe(phaseStepAllyRing);
-		phaseStepAllyRing = null;
-	}
+	phaseStepAllyRing = null;
 	phaseStepTargetId = null;
 }
 
@@ -534,6 +493,9 @@ function applyLayoutToScene(layout, passageLocks) {
 	clearPassageGateMeshes();
 	clearDungeon(scene, dungeonMeshes);
 	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
+	// Dungeon theme materials are module-level caches — retain them across the
+	// next abandonObject3DTree so only per-build geometries are freed.
+	for (const mesh of meshes) markObjectMaterialsShared(mesh);
 	dungeonMeshes.push(...meshes);
 	spawnPosition.x = spawn.x;
 	spawnPosition.z = spawn.z;
