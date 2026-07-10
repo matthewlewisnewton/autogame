@@ -126,3 +126,17 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+## Agentic Cloud Environments
+
+When running in an agentic cloud/sandbox environment — e.g. Claude Code on the
+web (remote sessions), Cursor cloud agents, or similar CI-like agent runners —
+the `bd` CLI and the beads Dolt remote are typically unavailable. In these
+environments the Beads rules above are relaxed:
+
+- Code changes may proceed **without filing, claiming, or closing beads**.
+- Record any follow-up work in the PR description or handoff summary instead,
+  so a maintainer (or a later local session) can file beads for it.
+- All other guidance still applies: run quality gates for code changes, and
+  follow the commit/push authority granted by the current user or orchestrator
+  instructions.

@@ -1855,6 +1855,7 @@ function renderQuestBoardState() {
 			questVariants,
 			selectionLocked: false,
 			briefingPanelEl: questBriefingPanelEl,
+			levelUnlockGraph,
 		},
 	);
 	renderLevelMapState();
