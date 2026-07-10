@@ -2195,11 +2195,12 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   return { hits, magicStonesGained };
 }
 
-function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
+function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0, options = {}) {
   // Freeze expiry rides the scaled sim clock so the lock slows with the world.
   const now = simNow();
   const frozenUntil = now + durationMs;
   const hits = [];
+  const attackerId = options.attackerId;
   const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
@@ -2211,6 +2212,7 @@ function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, dama
       hitDamage += frozenBonusDamage;
     }
     if (hitDamage > 0) {
+      if (attackerId) enemy.lastDamagedBy = attackerId;
       damageEnemy(enemy, hitDamage);
       const hit = { enemyId: enemy.id, hp: enemy.hp };
       if (wasFrozen && frozenBonusDamage > 0) {
@@ -2374,7 +2376,7 @@ function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId, originY = 
  * to clients (mirroring `_pendingMinionBreaths`). `def` is the variant registry
  * entry carrying `radius`/`damage`.
  */
-function spawnVolatileExplosion(x, z, def) {
+function spawnVolatileExplosion(x, z, def, ownerId = null) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   if (!_gameState._pendingVolatileExplosions) _gameState._pendingVolatileExplosions = [];
   const now = Date.now();
@@ -2383,6 +2385,8 @@ function spawnVolatileExplosion(x, z, def) {
   _gameState.areaEffects.push({
     id: crypto.randomUUID(),
     type: 'volatile_explosion',
+    // Kill credit for chain kills goes to whoever popped the volatile enemy.
+    ownerId,
     originX: x,
     // The blast centers on the floor where the enemy fell; the sphere check
     // against effect.originY happens in updateAreaEffects.
@@ -2416,7 +2420,8 @@ function updateAreaEffects() {
         originY,
         effect.originZ,
         effect.range,
-        effect.damagePerTick
+        effect.damagePerTick,
+        { attackerId: effect.ownerId }
       ));
       for (const minion of _gameState.minions) {
         if (minion.hp <= 0) continue;
@@ -2455,7 +2460,7 @@ function updateAreaEffects() {
         effect.range,
         effect.coneAngle,
         effect.damagePerTick,
-        { originY: effect.originY ?? null, dirY: effect.dirY ?? 0 }
+        { originY: effect.originY ?? null, dirY: effect.dirY ?? 0, attackerId: effect.ownerId }
       ));
     }
     effect.lastTickAt = now;

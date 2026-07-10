@@ -759,7 +759,8 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           radius,
           freezeDurationMs,
           cardDef.damage || 0,
-          cardDef.frozenBonusDamage || 0
+          cardDef.frozenBonusDamage || 0,
+          { attackerId: socket.playerId }
         );
         await cleanupAfterDamage();
 

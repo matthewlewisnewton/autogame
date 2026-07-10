@@ -190,9 +190,12 @@ export function bindLobbyHandlers(s, ctx) {
 
 	s.on(SERVER_TO_CLIENT.QUEST_ERROR, (data) => {
 		if (!data || !data.reason) return;
-		const reason = data.reason === 'suspended_checkpoint'
-			? ctx.THEME.run.questSuspendedLocked
-			: data.reason;
+		let reason = data.reason;
+		if (reason === 'suspended_checkpoint') {
+			reason = ctx.THEME.run.questSuspendedLocked;
+		} else if (reason === 'tier_locked') {
+			reason = ctx.THEME.run.questTierLocked;
+		}
 		ctx.showQuestError(reason);
 	});
 

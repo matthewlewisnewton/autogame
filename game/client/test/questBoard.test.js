@@ -481,6 +481,29 @@ describe('renderQuestBoard()', () => {
 		expect(selected).toEqual([{ questId: 'training_caverns', tier: 2 }]);
 	});
 
+	it('clears the tier-1 Locked badge incrementally when a prereq unlock flips tierUnlocked', () => {
+		const lockedQuests = SAMPLE_QUESTS.map((quest) =>
+			quest.id === 'crystal_rescue' ? { ...quest, tierUnlocked: false } : quest);
+		renderQuestBoard(container, lockedQuests, 'training_caverns', null, {
+			selectedQuestTier: 1,
+		});
+		const card = container.querySelector('[data-quest-id="crystal_rescue"][data-quest-tier="1"]');
+		expect(card.disabled).toBe(true);
+		expect(card.querySelector('.quest-tier-badge').textContent).toBe('Locked');
+
+		const unlockedQuests = SAMPLE_QUESTS.map((quest) =>
+			quest.id === 'crystal_rescue' ? { ...quest, tierUnlocked: true } : quest);
+		renderQuestBoard(container, unlockedQuests, 'training_caverns', null, {
+			selectedQuestTier: 1,
+		});
+
+		// Same card instance (incremental fast path), now unlocked with no stale badge.
+		expect(container.querySelector('[data-quest-id="crystal_rescue"][data-quest-tier="1"]')).toBe(card);
+		expect(card.disabled).toBe(false);
+		expect(card.classList.contains('quest-card-tier-locked')).toBe(false);
+		expect(card.querySelector('.quest-tier-badge').textContent).toBe('');
+	});
+
 	it('falls back to unlockedQuestTiers when tierUnlocked is absent on variant', () => {
 		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
 			questVariants: [TRAINING_TIER2_VARIANT],

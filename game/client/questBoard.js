@@ -497,8 +497,11 @@ export function renderQuestBoard(
 			if (tierBadge) {
 				if (tier >= 2) {
 					tierBadge.textContent = tierLocked ? 'Tier 2 — Locked' : 'Tier 2';
-				} else if (tierLocked) {
-					tierBadge.textContent = 'Locked';
+				} else {
+					// Tier-1 badge must clear when a prereq unlock flips the card
+					// to unlocked on this fast path (e.g. clearing crucible_duel
+					// unlocks vault_onslaught without changing the rebuild key).
+					tierBadge.textContent = tierLocked ? 'Locked' : '';
 				}
 			}
 		});
