@@ -72,6 +72,31 @@ function sleep(ms) {
 	return new Promise((r) => setTimeout(r, ms));
 }
 
+class SlowLoadProvider extends InMemoryProvider {
+	async loadPlayer(playerId) {
+		await sleep(25);
+		return super.loadPlayer(playerId);
+	}
+}
+
+class BlockingLoadProvider extends InMemoryProvider {
+	arm() {
+		this.blocked = true;
+		this.hit = new Promise((resolve) => { this.signalHit = resolve; });
+		this.gate = new Promise((resolve) => { this.release = resolve; });
+	}
+
+	async loadPlayer(playerId) {
+		const value = await super.loadPlayer(playerId);
+		if (this.blocked) {
+			this.blocked = false;
+			this.signalHit();
+			await this.gate;
+		}
+		return value;
+	}
+}
+
 /** Connect a client and optionally join/create a lobby. */
 async function connectClient(baseUrl, accountId, options = {}) {
 	const { cookieHeader } = await ensureTestUserSession(String(accountId));
@@ -233,6 +258,56 @@ describe('Lobby max-players cap', () => {
 		expect(Object.keys(stateAfter.players)).toHaveLength(16);
 
 		sixteenth.socket.disconnect();
+	});
+
+	it('serializes concurrent joins so the lobby never exceeds MAX_PLAYERS', async () => {
+		const creator = await connectClient(baseUrl, 'race-creator', {});
+		const lobbyId = creator.lobbyId;
+		const sockets = [creator];
+		for (let i = 1; i < 15; i++) {
+			sockets.push(await connectClient(baseUrl, `race-player-${i}`, { joinLobbyId: lobbyId }));
+		}
+
+		const contenderA = await connectClient(baseUrl, 'race-contender-a', { skipLobby: true });
+		const contenderB = await connectClient(baseUrl, 'race-contender-b', { skipLobby: true });
+		sockets.push(contenderA, contenderB);
+		setTestProvider(new SlowLoadProvider());
+
+		const attemptJoin = (client) => Promise.race([
+			waitForEvent(client.socket, 'lobbyJoined').then(() => 'joined'),
+			waitForEvent(client.socket, 'lobbyError').then(() => 'error'),
+		]);
+		const outcomeA = attemptJoin(contenderA);
+		const outcomeB = attemptJoin(contenderB);
+		contenderA.socket.emit('joinLobby', { lobbyId });
+		contenderB.socket.emit('joinLobby', { lobbyId });
+
+		expect((await Promise.all([outcomeA, outcomeB])).sort()).toEqual(['error', 'joined']);
+		expect(Object.keys(lobbyGameState(lobbyId).players)).toHaveLength(MAX_PLAYERS);
+
+		for (const client of sockets) client.socket.disconnect();
+	});
+
+	it('cancels an in-flight create when the socket disconnects during persistence load', async () => {
+		const client = await connectClient(baseUrl, 'disconnect-during-create', { skipLobby: true });
+		const provider = new BlockingLoadProvider();
+		setTestProvider(provider);
+		provider.arm();
+
+		client.socket.emit('createLobby', { name: 'must-not-become-a-ghost' });
+		await provider.hit;
+		client.socket.disconnect();
+		await sleep(50);
+		provider.release();
+		await sleep(50);
+
+		const { _lobbies } = require('../lobbies.js');
+		const memberships = [..._lobbies.values()]
+			.filter((lobby) => lobby.state.players[client.init.playerId]);
+		const orphan = [..._lobbies.values()]
+			.find((lobby) => lobby.name === 'must-not-become-a-ghost');
+		expect(memberships).toHaveLength(0);
+		expect(orphan).toBeUndefined();
 	});
 
 	it('leaveLobby by one of 16 players allows a new joiner', async () => {

@@ -2506,7 +2506,7 @@ function _cardEffects() {
  * with costs paid at commit; when cardWindupMs elapses we run the stored effect using
  * the locked origin/rotation from pendingCardUse (see cardEffects.resolvePendingCardUse).
  */
-async function processPendingCardWindups() {
+function processPendingCardWindups() {
   if (!_gameState || !isPlayingPhase(_gameState)) return;
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -2538,8 +2538,9 @@ async function processPendingCardWindups() {
   }
 
   if (tasks.length > 0) {
-    await Promise.all(tasks);
+    return Promise.all(tasks);
   }
+  return null;
 }
 
 function findNearestMinionNear(enemyX, enemyZ, detectionRadius, options = {}) {

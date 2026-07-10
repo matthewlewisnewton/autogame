@@ -1,6 +1,8 @@
 // Guards Socket.IO event handlers so a single thrown/rejected handler cannot
 // tear down the Node process during dev/harness runs.
 
+const { allowSocketEvent } = require('./socketRateLimit');
+
 function logSocketHandlerFailure(event, err) {
   const detail = err && err.stack ? err.stack : err;
   console.error(`[socket:${event}] handler error:`, detail);
@@ -13,6 +15,7 @@ function logSocketHandlerFailure(event, err) {
  */
 function wrapSocketListener(event, handler) {
   return function socketListenerWrapper(...args) {
+    if (!allowSocketEvent(this, event)) return;
     try {
       const result = handler.apply(this, args);
       if (result && typeof result.then === 'function') {

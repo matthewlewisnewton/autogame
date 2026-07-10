@@ -141,7 +141,10 @@ describe('fly replay client socket affinity', () => {
 		const emits = window.__socketEmitLog().filter((e) => e.event === CLIENT_TO_SERVER.JOIN_LOBBY);
 		expect(emits).toHaveLength(1);
 		expect(emits[0].data).toEqual({ lobbyId: 'remote01' });
-		expect(window.__getPendingLobbyJoinForTest()).toBeNull();
+		expect(window.__getPendingLobbyJoinForTest()).toEqual({
+			lobbyId: 'remote01',
+			instanceId: 'fly-machine-remote',
+		});
 	});
 
 	it('requestJoinLobby without instanceId emits joinLobby on the existing socket', async () => {

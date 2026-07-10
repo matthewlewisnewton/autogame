@@ -10,6 +10,8 @@ import {
 	clearAllTimers,
 	setTestProvider,
 	savePlayerData,
+	saveAllPlayersInAllLobbies,
+	buildPlayerRecord,
 	spawnLoot,
 	runGameLoopTick,
 } from '../index.js';
@@ -44,6 +46,13 @@ async function startTestServer() {
 
 function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
+}
+
+class SlowSaveProvider extends InMemoryProvider {
+	async savePlayer(playerId, data) {
+		await sleep(10);
+		return super.savePlayer(playerId, data);
+	}
 }
 
 async function closeServer() {
@@ -117,6 +126,22 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 
 		savePlayerSpy.mockRestore();
 		socket.disconnect();
+	});
+
+	it('periodic multi-lobby saves retain context for every player across awaits', async () => {
+		const provider = new SlowSaveProvider();
+		setTestProvider(provider);
+		const { createLobby } = require('../lobbies.js');
+		const lobbyA = createLobby('save-context-a');
+		const lobbyB = createLobby('save-context-b');
+		lobbyA.state.players.a1 = buildPlayerRecord('a1', 'a1', 'a1', null);
+		lobbyA.state.players.a2 = buildPlayerRecord('a2', 'a2', 'a2', null);
+		lobbyB.state.players.b1 = buildPlayerRecord('b1', 'b1', 'b1', null);
+		lobbyB.state.players.b2 = buildPlayerRecord('b2', 'b2', 'b2', null);
+
+		await saveAllPlayersInAllLobbies();
+
+		expect([...provider.store.keys()].sort()).toEqual(['a1', 'a2', 'b1', 'b2']);
 	});
 
 	it('debounces movement saves across ticks within PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS', async () => {

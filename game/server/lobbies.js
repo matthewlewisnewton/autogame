@@ -132,6 +132,15 @@ const lobbies = new Map();
 const playerLobby = new Map();
 /** @type {Map<string, object>} playerId -> session data while browsing (not in a lobby) */
 const playerSessions = new Map();
+// Lobby membership transitions contain async persistence reads. Serialize them
+// so create/join checks and their eventual commits are one atomic operation.
+let membershipQueue = Promise.resolve();
+
+function withMembershipLock(fn) {
+  const operation = membershipQueue.then(fn, fn);
+  membershipQueue = operation.catch(() => {});
+  return operation;
+}
 
 function generateLobbyId() {
   return crypto.randomBytes(4).toString('hex');
@@ -219,6 +228,16 @@ function createLobby(name) {
   return lobby;
 }
 
+function deleteLobbyIfEmpty(lobbyId) {
+  const lobby = lobbies.get(lobbyId);
+  if (!lobby || Object.keys(lobby.state.players).length > 0) return false;
+  lobbies.delete(lobbyId);
+  unregisterLobby(lobbyId).catch((err) => {
+    console.error('[lobbyRegistry] unregisterLobby failed:', err);
+  });
+  return true;
+}
+
 function assignPlayerToLobby(playerId, lobbyId) {
   playerLobby.set(playerId, lobbyId);
   // A player joining/reconnecting means the lobby is no longer abandoned; clear
@@ -260,6 +279,7 @@ function resetAllLobbies() {
   lobbies.clear();
   playerLobby.clear();
   playerSessions.clear();
+  membershipQueue = Promise.resolve();
 }
 
 function getPrimaryLobbyStateForTests() {
@@ -283,6 +303,8 @@ module.exports = {
   setGamePhase,
   createLobbyGameState,
   createLobby,
+  deleteLobbyIfEmpty,
+  withMembershipLock,
   assignPlayerToLobby,
   removePlayerFromLobby,
   getLobbyById,

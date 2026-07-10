@@ -112,6 +112,23 @@ afterEach(async () => {
 // ── Tests ──
 
 describe('Dual socket race', () => {
+	it('second connection evicts the first even before either socket joins a lobby', async () => {
+		const username = `dual-browser-${Date.now()}`;
+		const { accountId, cookieHeader } = await ensureTestUserSession(username, 'password123', baseUrl);
+		const { socket: socketA } = await connectAndWaitForInit(baseUrl, cookieHeader);
+		const socketADisconnected = new Promise((resolve) => socketA.once('disconnect', resolve));
+
+		const { socket: socketB } = await connectAndWaitForInit(baseUrl, cookieHeader);
+		await socketADisconnected;
+
+		expect(countConnectedSocketsForPlayerId(accountId)).toBe(1);
+		expect(socketA.connected).toBe(false);
+		expect(socketB.connected).toBe(true);
+		expect(findSocketByPlayerId(accountId)?.id).toBe(socketB.id);
+
+		socketB.disconnect();
+	});
+
 	it('second connection with the same session evicts the first live socket', async () => {
 		const username = `dual-socket-${Date.now()}`;
 		const { accountId, cookieHeader } = await ensureTestUserSession(username, 'password123', baseUrl);

@@ -7,6 +7,7 @@ const { serverToClient: SERVER_TO_CLIENT } = eventsCatalog;
 export function bindLobbyBrowserHandlers(s, ctx) {
 	s.on(SERVER_TO_CLIENT.LOBBY_JOINED, (data) => {
 		ctx.showLobbyBrowserError('');
+		if (ctx.clearPendingLobbyJoin) ctx.clearPendingLobbyJoin();
 		ctx.applyLobbyJoinedData(data);
 		// Debug hook: ?booth=launch readies up automatically on a lobby join so a
 		// run can be launched without walking to the Launch Bay booth. Guarded to
@@ -20,6 +21,10 @@ export function bindLobbyBrowserHandlers(s, ctx) {
 	s.on(SERVER_TO_CLIENT.LOBBY_LEFT, (data) => {
 		ctx.gameState = null;
 		ctx.setGameStateRef(null);
+		ctx.isReady = false;
+		ctx.launchReadyPending = false;
+		ctx.pendingTradeOffer = null;
+		ctx.extractedLobbyOverlayActive = false;
 		// Dispose world entity meshes so stale/frozen entities don't linger behind
 		// the lobby browser until the next join (mirrors runHandlers START_GAME).
 		const sc = ctx.getScene();

@@ -2,6 +2,7 @@
 
 export function bindConnectionHandlers(s, ctx) {
 	s.on('connect', () => {
+		if (ctx.isCurrentSocket && !ctx.isCurrentSocket(s)) return;
 		ctx.clearConnectWatchdog();
 		ctx.showLobbyBrowserError('');
 		ctx.updateStatus('Connected', 'connected');
@@ -10,6 +11,7 @@ export function bindConnectionHandlers(s, ctx) {
 	});
 
 	s.on('disconnect', () => {
+		if (ctx.isCurrentSocket && !ctx.isCurrentSocket(s)) return;
 		ctx.stopHeartbeat();
 		ctx.updateStatus('Disconnected', 'disconnected');
 		ctx.disposeAllLootMeshes();
@@ -20,6 +22,7 @@ export function bindConnectionHandlers(s, ctx) {
 	});
 
 	s.io.on('reconnect_attempt', () => {
+		if (ctx.isCurrentSocket && !ctx.isCurrentSocket(s)) return;
 		ctx.updateStatus('Reconnecting...', 'reconnecting');
 		// Idempotent: the first signal in an episode arms an absolute deadline;
 		// rapid repeated reconnect attempts do NOT postpone it, so a stalled
@@ -28,6 +31,7 @@ export function bindConnectionHandlers(s, ctx) {
 	});
 
 	s.io.on('reconnect', () => {
+		if (ctx.isCurrentSocket && !ctx.isCurrentSocket(s)) return;
 		ctx.clearConnectWatchdog();
 		ctx.showLobbyBrowserError('');
 		ctx.updateStatus('Connected', 'connected');
@@ -36,6 +40,7 @@ export function bindConnectionHandlers(s, ctx) {
 	});
 
 	s.on('connect_error', (err) => {
+		if (ctx.isCurrentSocket && !ctx.isCurrentSocket(s)) return;
 		const msg = err?.message || String(err || '');
 		const isAuthError = /session|unauthorized|authentication/i.test(msg);
 		ctx.stopHeartbeat();
@@ -46,6 +51,7 @@ export function bindConnectionHandlers(s, ctx) {
 			ctx.clearConnectWatchdog();
 			ctx.setAuthToken(null);
 			s.io.disconnect();
+			if (ctx.resetClientSessionState) ctx.resetClientSessionState();
 			if (ctx.uiEl) ctx.uiEl.style.display = 'none';
 			if (ctx.cardHandEl) ctx.hideCardHand();
 			ctx.hideVariantCodex();

@@ -313,6 +313,13 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+export function emitVolatile(socket, event, payload) {
+	if (!socket || socket.connected === false) return;
+	const target = socket.volatile && typeof socket.volatile.emit === 'function'
+		? socket.volatile
+		: socket;
+	target.emit(event, payload);
+}
 /** @type {(() => boolean) | null} */
 let runSummaryOverlayVisibleChecker = null;
 /** @type {(() => object | null) | null} */
@@ -1549,7 +1556,7 @@ function syncFacingToServer() {
 		return;
 	}
 	lastEmittedRotation = playerRotation;
-	socketRef.emit(CLIENT_TO_SERVER.MOVE, { dx: 0, dz: 0, rotation: playerRotation });
+	emitVolatile(socketRef, CLIENT_TO_SERVER.MOVE, { dx: 0, dz: 0, rotation: playerRotation });
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
@@ -2420,7 +2427,7 @@ export function updateMyPlayer(delta) {
 			// input until INPUT_STALE_MS and the idle reconciler snaps us back.
 			moveStopPending = false;
 			moveSequence += 1;
-			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
+			emitVolatile(socketRef, CLIENT_TO_SERVER.MOVE, {
 				dx: 0,
 				dz: 0,
 				rotation: lastEmittedRotation ?? playerRotation,
@@ -2470,7 +2477,7 @@ export function updateMyPlayer(delta) {
 				moveSequence += 1;
 				lastEmittedRotation = moveRotation;
 				moveStopPending = true;
-				socketRef.emit(CLIENT_TO_SERVER.MOVE, {
+				emitVolatile(socketRef, CLIENT_TO_SERVER.MOVE, {
 					dx: dirX,
 					dz: dirZ,
 					rotation: moveRotation,
