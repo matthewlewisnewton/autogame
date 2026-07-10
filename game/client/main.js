@@ -1059,6 +1059,14 @@ function applyLobbyJoinedData(data) {
 		if (gameState) gameState.layout = currentLayout;
 		if (lobbyEl) lobbyEl.classList.add('hidden');
 		setLobbyHudVisible(false);
+		uiEl.style.display = 'block';
+		showCardHand();
+		setDeckStackVisible(true);
+		initHand();
+		updateObjectiveHud();
+		updateObjectiveNavIndicator();
+		setWasDead(false);
+		setGamePhase('playing');
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);

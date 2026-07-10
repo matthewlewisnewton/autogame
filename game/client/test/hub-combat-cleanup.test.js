@@ -109,6 +109,25 @@ describe('hub scene world reset', () => {
 		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
 	});
 
+	it('resetSceneWorld flushes floating damage-number DOM nodes', async () => {
+		const hubLayout = generateHub(0);
+		const questLayout = generateLayout(42, 'default');
+		const {
+			initScene,
+			resetSceneWorld,
+			setGamePhase,
+			spawnDamageNumber,
+		} = await import('../renderer.js');
+
+		setGamePhase('playing');
+		initScene(questLayout, { x: 0, z: 0 });
+		spawnDamageNumber(1, 1, 1, 12, '#ff0000', false);
+		expect([...document.body.querySelectorAll('div')].some((el) => el.textContent === '-12')).toBe(true);
+
+		resetSceneWorld(hubLayout);
+		expect([...document.body.querySelectorAll('div')].some((el) => el.textContent === '-12')).toBe(false);
+	});
+
 	it('animate does not recreate combat meshes while phase is lobby on hub layout', async () => {
 		const hubLayout = generateHub(0);
 		const {

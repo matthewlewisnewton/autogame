@@ -418,12 +418,9 @@ export function disposeRenderer() {
 		if (canvas?.parentNode) canvas.parentNode.removeChild(canvas);
 		renderer = null;
 	}
-	// Flush floating damage-number DOM nodes; updateDamageNumbers() early-returns
-	// when !renderer, so they would otherwise leak on document.body.
-	for (const dn of damageNumbers) dn.element?.remove();
-	damageNumbers.length = 0;
-	// Drop every scene-owned object/map so a subsequent initScene cannot keep
-	// references into the disposed WebGL context / previous THREE.Scene.
+	// Drop every scene-owned object/map + floating DOM combat UI so a subsequent
+	// initScene cannot keep references into the disposed WebGL context / previous
+	// THREE.Scene (or orphaned damage-number nodes on document.body).
 	clearSceneOwnedContent();
 	scene = null;
 	setScene(null);
@@ -479,10 +476,14 @@ function clearWorldEntityMeshes() {
 
 /**
  * Dispose every Object3D the renderer parents under the live scene, and empty
- * the keyed mesh maps. Keeps the WebGLRenderer / camera / animate loop so a
- * fresh THREE.Scene can be attached immediately (see resetSceneWorld).
+ * the keyed mesh maps. Also flushes floating damage-number DOM nodes. Keeps the
+ * WebGLRenderer / camera / animate loop so a fresh THREE.Scene can be attached
+ * immediately (see resetSceneWorld).
  */
 function clearSceneOwnedContent() {
+	for (const dn of damageNumbers) dn.element?.remove();
+	damageNumbers.length = 0;
+
 	const sc = scene || getScene();
 	clearWorldEntityMeshes();
 
@@ -7630,8 +7631,14 @@ export function animate(timestamp) {
 	const gs = gameStateRef;
 	const myId = myIdRef;
 
+	// Skip dungeon combat/loot while the hub ship is the active world (lobby or
+	// mid-run extract). Prefer layout profile so tests without an explicit phase
+	// still exercise combat sync; fall back to currentLayoutProfile after resets.
+	const layoutProfile = gs?.layout?.profile ?? currentLayoutProfile;
+	const syncCombatWorld = layoutProfile !== 'hub';
+
 	// ── Loot proximity check — closest drop in range; any player can grab it ──
-	if (gs && gs.loot && gs.loot.length > 0 && !isDungeonInputBlocked()) {
+	if (syncCombatWorld && gs && gs.loot && gs.loot.length > 0 && !isDungeonInputBlocked()) {
 		const localPlayer = gs.players[myId];
 		if (localPlayer && !localPlayer.dead) {
 			const now = performance.now();
@@ -7652,11 +7659,6 @@ export function animate(timestamp) {
 		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
 		syncPhaseStepAllyHighlight(gs, myId);
 
-		// Hub / lobby (including mid-run extract) draws a fresh scene root via
-		// resetSceneWorld(); still skip combat reconcile so a playing-phase
-		// snapshot with enemies cannot repopulate the ship interior.
-		const syncCombatWorld = currentGamePhase === 'playing'
-			&& gs.layout?.profile !== 'hub';
 		if (syncCombatWorld) {
 			syncEnemyMeshes(gs);
 			syncMinionMeshes(gs);
