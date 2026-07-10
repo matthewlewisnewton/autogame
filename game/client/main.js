@@ -123,6 +123,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	clearWorldEntityMeshes,
 	syncPassageLockColliders,
 	syncPassageLockGates,
 	setGameStateRef,
@@ -966,6 +967,10 @@ function renderHubScene() {
 		rendererInitScene(hubLayout, getSpawnPosition());
 	} else if (renderedSceneProfile !== 'hub') {
 		rebuildDungeonLayout(hubLayout);
+	} else {
+		// Already on the hub geometry (e.g. repeated extract overlays) — still
+		// flush combat leftovers so dungeon enemies cannot linger in the ship.
+		clearWorldEntityMeshes();
 	}
 	renderedSceneProfile = 'hub';
 	if (gameState) {
@@ -1481,6 +1486,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	isSceneInitialized,
 	rendererInitScene,
 	rebuildDungeonLayout,
+	clearWorldEntityMeshes,
 	setPlayerRotation,
 	setWasDead,
 	rendererDisposeMeshMap,

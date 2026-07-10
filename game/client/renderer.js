@@ -222,6 +222,7 @@ import {
 	animateTelepipePortal,
 	disposeLootMeshMaterials,
 	resetLootSyncState,
+	clearTelepipePortal,
 } from './renderer/lootSync.js';
 
 // Loot-domain + ice-ball + telepipe-portal sync now lives in
@@ -235,6 +236,7 @@ export {
 	syncIceBallMeshes,
 	syncTelepipeMesh,
 	animateTelepipePortal,
+	clearTelepipePortal,
 };
 import { syncPlayerMeshes } from './renderer/playerSync.js';
 import {
@@ -279,6 +281,8 @@ export const enemyDamageFlash = new Map();
 // Telepipe portal state (telepipeMesh / telepipeParticles / telepipeShimmerPhase)
 // now lives in ./renderer/lootSync.js alongside syncTelepipeMesh.
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
+/** playerId → active mirror-ward shell effect (cleared with world entities). */
+const mirrorWardShellsByPlayer = new Map();
 
 // ── Player local state ──
 let myX = 0;
@@ -411,7 +415,59 @@ export function disposeRenderer() {
 	// when !renderer, so they would otherwise leak on document.body.
 	for (const dn of damageNumbers) dn.element?.remove();
 	damageNumbers.length = 0;
+	// Drop combat/world entity maps so a subsequent initScene cannot keep
+	// references into the disposed WebGL context / previous THREE.Scene.
+	clearWorldEntityMeshes();
 	sceneInitialized = false;
+}
+
+/**
+ * Tear down every combat/world entity mesh that is not part of the dungeon
+ * geometry or player avatars. Hub transitions reuse the Three.js scene via
+ * rebuildDungeonLayout(); without this, enemies/minions/loot/VFX from an
+ * active (or just-finished) run remain parented under the hub ship interior —
+ * the "lobby with dungeon enemies in the background" bug.
+ *
+ * Call on hub entry and full renderer dispose. Safe to call repeatedly.
+ */
+export function clearWorldEntityMeshes() {
+	const sc = scene || getScene();
+	disposeMeshMap(enemiesMeshes, sc);
+	disposeMeshMap(enemyHealthBars, sc);
+	disposeMeshMap(enemyShieldBars, sc);
+	disposeMeshMap(enemyHitboxMeshes, sc);
+	disposeMeshMap(enemyShadows, sc);
+	disposeMeshMap(telegraphMeshes, sc);
+	disposeMeshMap(minionTelegraphMeshes, sc);
+	disposeMeshMap(enemyLockOnRings, sc);
+	disposeMeshMap(variantMarkerMeshes, sc);
+	disposeMeshMap(frenziedTelegraphMeshes, sc);
+	disposeMeshMap(enemySlowMarkers, sc);
+	disposeMeshMap(enemyBurnMarkers, sc);
+	disposeMeshMap(minionsMeshes, sc);
+	disposeMeshMap(minionShadows, sc);
+	disposeMeshMap(escortHealthBars, sc);
+	disposeMeshMap(spikeTrapMeshes, sc);
+	disposeMeshMap(iceBallMeshes, sc);
+	disposeMeshMap(playerCardWindupMarkers, sc);
+	disposeMeshMap(playerSlowMarkers, sc);
+	disposeMeshMap(playerBurnMarkers, sc);
+	for (const id of Object.keys(enemyNameplates)) {
+		disposeEnemyNameplate(id);
+	}
+	disposeAllLootMeshes();
+	clearTelepipePortal();
+
+	const attackEffectCtx = { mirrorWardShellsByPlayer };
+	for (let i = activeEffects.length - 1; i >= 0; i--) {
+		disposeAttackEffect(activeEffects[i], activeEffects, i, attackEffectCtx);
+	}
+	mirrorWardShellsByPlayer.clear();
+	windupFlashing.clear();
+	playerCardWindupFlashing.clear();
+	clearAllLockOnState();
+	lockOnToTarget = null;
+	lockOnReleaseLookAt = null;
 }
 
 // ── Layout height atmosphere (spire-ascent, fire-cavern) ──
@@ -2118,12 +2174,19 @@ export function initScene(layout, spawnPos) {
 
 /**
  * Rebuild dungeon geometry from a new server layout without recreating the scene.
- * Used when the player selects a different quest in the lobby.
+ * Used when the player selects a different quest in the lobby, deploys into a
+ * run, or returns to the hub ship. Hub transitions also flush combat entity
+ * meshes so dungeon enemies/VFX cannot linger under the reused scene.
  *
  * @param {object} layout - { rooms, passages } from server
  */
 export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
+
+	const enteringHub = layout.profile === 'hub';
+	if (enteringHub) {
+		clearWorldEntityMeshes();
+	}
 
 	activeLayout = layout;
 	clearPassageGateMeshes();
@@ -6792,7 +6855,6 @@ export function spawnChainLightningEffect(origin, direction) {
 const MIRROR_WARD_COLOR = 0x5eead4;
 const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
 const MIRROR_WARD_SILVER = 0xe2e8f0;
-const mirrorWardShellsByPlayer = new Map();
 
 const EVENT_HORIZON_CORE_COLOR = 0x1a0a2e;
 const EVENT_HORIZON_RING_COLOR = 0x581c87;
@@ -7511,17 +7573,19 @@ export function animate(timestamp) {
 		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
 		syncPhaseStepAllyHighlight(gs, myId);
 
-		syncEnemyMeshes(gs);
-
-		syncMinionMeshes(gs);
-
-		syncSpikeTrapMeshes(gs);
-
-		// ── Loot mesh sync ──
-		syncLootMeshes();
-		// ── Ice-ball projectile sync ──
-		syncIceBallMeshes();
-		syncTelepipeMesh();
+		// Hub / lobby (including mid-run extract) reuses the Three.js scene but
+		// must not keep reconciling dungeon combat entities from gameState —
+		// extracted players still receive a playing-phase snapshot with enemies.
+		const syncCombatWorld = currentGamePhase === 'playing'
+			&& gs.layout?.profile !== 'hub';
+		if (syncCombatWorld) {
+			syncEnemyMeshes(gs);
+			syncMinionMeshes(gs);
+			syncSpikeTrapMeshes(gs);
+			syncLootMeshes();
+			syncIceBallMeshes();
+			syncTelepipeMesh();
+		}
 	}
 
 	// Animate loot coins (outside gameState guard)

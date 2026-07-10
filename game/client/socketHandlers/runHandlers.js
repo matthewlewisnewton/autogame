@@ -44,26 +44,10 @@ export function bindRunHandlers(s, ctx) {
 		ctx.setGamePhase('playing');
 		ctx.updateLevelSettingsBtnVisibility();
 
-		// Only clear entity meshes when we lack fresh server state; otherwise the animate
-		// loop will reconcile from gameState on the next stateUpdate.
-		const hasWorldEntities = ctx.gameState && (
-			(Array.isArray(ctx.gameState.enemies) && ctx.gameState.enemies.length > 0) ||
-			(Array.isArray(ctx.gameState.minions) && ctx.gameState.minions.length > 0) ||
-			(Array.isArray(ctx.gameState.loot) && ctx.gameState.loot.length > 0)
-		);
-		if (!hasWorldEntities) {
-			const sc = ctx.getScene();
-			const maps = ctx.getMeshMaps();
-			ctx.rendererDisposeMeshMap(maps.enemiesMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.enemyHealthBars, sc);
-			ctx.rendererDisposeMeshMap(maps.enemyShieldBars, sc);
-			ctx.rendererDisposeMeshMap(maps.telegraphMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.minionsMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.iceBallMeshes, sc);
-			ctx.disposeAllLootMeshes();
-		}
+		// Drop any hub-era leftovers, then let animate() rebuild combat meshes
+		// from the fresh playing snapshot. Always clear — reusing meshes across
+		// runs left stale enemies visible when returning to the ship lobby.
+		ctx.clearWorldEntityMeshes();
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, ctx.showRunSummary);
