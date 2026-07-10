@@ -1,8 +1,10 @@
 // Auth routes — POST /register, POST /login, POST /logout
 const { Router } = require('express');
+const crypto = require('crypto');
 const { createUserAsync, findUserByUsernameAsync, comparePasswordAsync } = require('./users');
 const { createSession, destroySession } = require('./sessions.js');
 const { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } = require('./cookies.js');
+const { getRedisClient, isRedisEnabled } = require('./redis.js');
 
 const router = Router();
 
@@ -105,6 +107,40 @@ function incrementRateLimit(req, action, username) {
 	return bucket.attempts > RATE_LIMIT_MAX_ATTEMPTS;
 }
 
+function distributedRateLimitKey(req, action, username) {
+	const digest = crypto
+		.createHash('sha256')
+		.update(rateLimitKey(req, action, username))
+		.digest('hex');
+	return `auth-rate:${digest}`;
+}
+
+async function isAuthRateLimited(req, action, username, increment = false) {
+	if (process.env.NODE_ENV === 'test' && process.env.AUTH_RATE_LIMIT_IN_TESTS !== '1') {
+		return false;
+	}
+	if (!isRedisEnabled()) {
+		return isRateLimited(req, action, username, increment);
+	}
+
+	try {
+		const redis = getRedisClient();
+		const key = distributedRateLimitKey(req, action, username);
+		if (!increment) {
+			const attempts = Number(await redis.get(key) || 0);
+			return attempts >= RATE_LIMIT_MAX_ATTEMPTS;
+		}
+		const attempts = Number(await redis.incr(key));
+		if (attempts === 1) {
+			await redis.expire(key, Math.max(1, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)));
+		}
+		return attempts > RATE_LIMIT_MAX_ATTEMPTS;
+	} catch (err) {
+		console.error('[auth] shared rate limit failed, using local fallback:', err.message);
+		return isRateLimited(req, action, username, increment);
+	}
+}
+
 /**
  * POST /api/register
  * Body: { username, password }
@@ -138,13 +174,14 @@ router.post('/register', async (req, res) => {
 		return res.status(400).json({ error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters` });
 	}
 
-	if (isRateLimited(req, 'register', username)) {
+	if (await isAuthRateLimited(req, 'register', username, false)) {
 		return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
 	}
 
 	try {
 		const result = await createUserAsync(username, password);
 		if (!result.ok) {
+			await isAuthRateLimited(req, 'register', username, true);
 			return res.status(409).json({ error: 'Username taken' });
 		}
 
@@ -183,17 +220,19 @@ router.post('/login', async (req, res) => {
 		return res.status(400).json({ error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters` });
 	}
 
-	if (isRateLimited(req, 'login', username)) {
+	if (await isAuthRateLimited(req, 'login', username, false)) {
 		return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
 	}
 
 	const user = await findUserByUsernameAsync(username);
 	if (!user) {
+		await isAuthRateLimited(req, 'login', username, true);
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
 
 	const valid = await comparePasswordAsync(password, user.passwordHash);
 	if (!valid) {
+		await isAuthRateLimited(req, 'login', username, true);
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
 
@@ -226,6 +265,7 @@ module.exports._resetRateLimits = function _resetRateLimits() { rateLimitBuckets
 module.exports._rateLimitBuckets = rateLimitBuckets;
 module.exports.isRateLimited = isRateLimited;
 module.exports.incrementRateLimit = incrementRateLimit;
+module.exports.isAuthRateLimited = isAuthRateLimited;
 module.exports.RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_MS;
 module.exports.RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;
 module.exports.MAX_PASSWORD_LENGTH = MAX_PASSWORD_LENGTH;

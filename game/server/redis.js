@@ -164,6 +164,14 @@ class MemoryStore {
     return this.strings.has(key) ? this.strings.get(key) : null;
   }
 
+  async incr(key) {
+    this.purgeIfExpired(key);
+    const current = Number(this.strings.get(key) || 0);
+    const next = current + 1;
+    this.strings.set(key, String(next));
+    return next;
+  }
+
   async del(...keys) {
     let removed = 0;
     for (const key of keys) {
@@ -234,11 +242,10 @@ class MemoryPubSubBus {
 
   publish(channel, message) {
     const normalized = String(channel);
-    const payload = String(message);
     const listeners = this.subscribers.get(normalized);
     if (!listeners) return 0;
     for (const listener of listeners) {
-      listener(normalized, payload);
+      listener(normalized, message);
     }
     return listeners.size;
   }
@@ -268,11 +275,10 @@ class MemoryPubSubBus {
   publishToPatterns(channel, message) {
     if (!this.patternSubscribers || this.patternSubscribers.size === 0) return;
     const normalizedChannel = String(channel);
-    const payload = String(message);
     for (const [pattern, listeners] of this.patternSubscribers.entries()) {
       if (!patternToRegex(pattern).test(normalizedChannel)) continue;
       for (const listener of listeners) {
-        listener(pattern, normalizedChannel, payload);
+        listener(pattern, normalizedChannel, message);
       }
     }
   }
@@ -302,6 +308,7 @@ function createMemoryRedisClient() {
     hdel: (...args) => store.hdel(...args),
     set: (...args) => store.set(...args),
     get: (...args) => store.get(...args),
+    incr: (...args) => store.incr(...args),
     del: (...args) => store.del(...args),
     expire: (...args) => store.expire(...args),
     scan: (...args) => store.scan(...args),
@@ -318,15 +325,14 @@ function createMemoryPubSubClient(bus) {
   const patternListeners = new Map();
 
   const deliverChannelMessage = (channel, message) => {
-    const payload = String(message);
+    const payload = Buffer.isBuffer(message) ? message : Buffer.from(String(message));
     const messageBufferHandler = listeners.get('messageBuffer');
     const messageHandler = listeners.get('message');
     if (messageBufferHandler) {
-      messageBufferHandler(Buffer.from(payload), channel);
+      messageBufferHandler(Buffer.from(String(channel)), payload);
     } else if (messageHandler) {
-      messageHandler(channel, payload);
+      messageHandler(channel, payload.toString());
     }
-    bus.publishToPatterns(channel, payload);
   };
 
   const client = {
@@ -372,11 +378,15 @@ function createMemoryPubSubClient(bus) {
           const listener = (matchedPattern, channel, message) => {
             const pmessageBufferHandler = listeners.get('pmessageBuffer');
             const pmessageHandler = listeners.get('pmessage');
-            const payload = String(message);
+            const payload = Buffer.isBuffer(message) ? message : Buffer.from(String(message));
             if (pmessageBufferHandler) {
-              pmessageBufferHandler(matchedPattern, channel, Buffer.from(payload));
+              pmessageBufferHandler(
+                Buffer.from(String(matchedPattern)),
+                Buffer.from(String(channel)),
+                payload,
+              );
             } else if (pmessageHandler) {
-              pmessageHandler(matchedPattern, channel, payload);
+              pmessageHandler(matchedPattern, channel, payload.toString());
             }
           };
           patternListeners.set(normalized, listener);

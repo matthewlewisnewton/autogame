@@ -440,6 +440,12 @@ describe('Socket Integration — Lobby create/join', () => {
 		expect(joined).toHaveProperty('layoutSeed');
 		expect(joined).toHaveProperty('layout');
 		expect(Array.isArray(joined.layout.rooms)).toBe(true);
+		expect(joined.state).not.toHaveProperty('_lobbyId');
+		expect(joined.state).not.toHaveProperty('pendingTrades');
+		expect(joined.state).not.toHaveProperty('layout');
+		expect(joined.state.players[socket._playerId]).not.toHaveProperty('accountId');
+		expect(joined.state.players[socket._playerId]).not.toHaveProperty('activeSocketId');
+		expect(Buffer.byteLength(JSON.stringify(joined))).toBeLessThan(512 * 1024);
 
 		const state = lobbyGameState(lobbyId);
 		expect(state.players[socket._playerId]).toBeDefined();
@@ -461,6 +467,24 @@ describe('Socket Integration — Lobby create/join', () => {
 
 		first.socket.disconnect();
 		second.socket.disconnect();
+	});
+
+	it('broadcasts lobby-list churn only to sockets browsing for a lobby', async () => {
+		const active = await connectAndJoinLobby(baseUrl, 'active-player', { name: 'Active Room' });
+		const browser = await connectClient(baseUrl, 'browser-player', { skipLobby: true });
+		const creator = await connectClient(baseUrl, 'new-room-creator', { skipLobby: true });
+		let activeReceivedList = false;
+		active.socket.on('lobbyListUpdate', () => { activeReceivedList = true; });
+		const browserUpdate = waitForEvent(browser.socket, 'lobbyListUpdate');
+
+		creator.socket.emit('createLobby', { name: 'New Browser Room' });
+		await browserUpdate;
+		await new Promise((resolve) => setTimeout(resolve, 25));
+
+		expect(activeReceivedList).toBe(false);
+		active.socket.disconnect();
+		browser.socket.disconnect();
+		creator.socket.disconnect();
 	});
 
 	it('lobby list updates include player counts and selected dungeon', async () => {

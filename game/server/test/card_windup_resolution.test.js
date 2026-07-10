@@ -363,15 +363,25 @@ describe('card wind-up deferred resolution', () => {
 		target().z = originZ;
 
 		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		const resolutionSnapshots = [];
+		const captureSnapshot = (snapshot) => resolutionSnapshots.push(snapshot);
+		socket.on('stateUpdate', captureSnapshot);
 		player.cardWindupStartTime = Date.now() - windUpMs - 50;
 		runGameLoopTick();
 		const cardUsedPayload = await cardUsedPromise;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		socket.off('stateUpdate', captureSnapshot);
 
 		expect(player.cardUseState).toBeUndefined();
 		expect(target().hp).toBeLessThan(hpBefore);
 		expect(cardUsedPayload.hits?.length).toBeGreaterThan(0);
 		expect(isPlayerCardCommitted(player)).toBe(false);
 		expect(player.pendingCardUse).toBeUndefined();
+		expect(resolutionSnapshots.length).toBeGreaterThan(0);
+		for (const snapshot of resolutionSnapshots) {
+			expect(snapshot.gamePhase).toBe('playing');
+			expect(snapshot.players[socket._playerId]).toBeDefined();
+		}
 	});
 
 	it('cancels pending resolution when the player dies during wind-up', async () => {

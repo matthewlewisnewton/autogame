@@ -388,6 +388,47 @@ describe('POST /api/login', () => {
 		expect(data.error).toBe('Invalid credentials');
 	});
 
+	it('rate-limits failed logins but does not count successful logins', async () => {
+		const previous = process.env.AUTH_RATE_LIMIT_IN_TESTS;
+		process.env.AUTH_RATE_LIMIT_IN_TESTS = '1';
+		_resetRateLimits();
+		try {
+			await fetch(`${baseUrl}/api/register`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: 'rate-user', password: 'correct' }),
+			});
+
+			for (let i = 0; i < auth.RATE_LIMIT_MAX_ATTEMPTS + 1; i++) {
+				const success = await fetch(`${baseUrl}/api/login`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username: 'rate-user', password: 'correct' }),
+				});
+				expect(success.status).toBe(200);
+			}
+
+			for (let i = 0; i < auth.RATE_LIMIT_MAX_ATTEMPTS; i++) {
+				const failure = await fetch(`${baseUrl}/api/login`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username: 'rate-user', password: 'wrong' }),
+				});
+				expect(failure.status).toBe(401);
+			}
+			const limited = await fetch(`${baseUrl}/api/login`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: 'rate-user', password: 'wrong' }),
+			});
+			expect(limited.status).toBe(429);
+		} finally {
+			if (previous === undefined) delete process.env.AUTH_RATE_LIMIT_IN_TESTS;
+			else process.env.AUTH_RATE_LIMIT_IN_TESTS = previous;
+			_resetRateLimits();
+		}
+	});
+
 	it('returns 400 when username is missing', async () => {
 		const res = await fetch(`${baseUrl}/api/login`, {
 			method: 'POST',

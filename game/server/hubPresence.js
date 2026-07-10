@@ -54,7 +54,8 @@ function safeBuildHubPresenceEntry(player) {
  */
 function syncHubPresenceFromLobby(lobby) {
   if (!ensureLobbyHubPresence(lobby)) return;
-  const prevJson = JSON.stringify(lobby.hubPresence.entries);
+  const prevJson = lobby._hubPresenceEntriesJson
+    ?? JSON.stringify(lobby.hubPresence.entries);
   const entries = {};
   const players = lobby.state?.players;
   if (lobby.state?.gamePhase === LOBBY_PHASE && players && typeof players === 'object') {
@@ -65,7 +66,9 @@ function syncHubPresenceFromLobby(lobby) {
     }
   }
   lobby.hubPresence.entries = entries;
-  if (prevJson !== JSON.stringify(entries)) {
+  const nextJson = JSON.stringify(entries);
+  lobby._hubPresenceEntriesJson = nextJson;
+  if (prevJson !== nextJson) {
     lobby.hubPresence.revision = (lobby.hubPresence.revision ?? 0) + 1;
   }
 }

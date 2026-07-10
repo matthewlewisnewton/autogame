@@ -5,6 +5,7 @@ const { getRedisClient } = require('./redis.js');
 
 const SESSION_KEY_PREFIX = 'session:';
 const SESSION_TTL_SECONDS = 86400;
+let _sessionDestroyedHandler = null;
 
 function sessionKey(token) {
   return `${SESSION_KEY_PREFIX}${token}`;
@@ -79,13 +80,27 @@ async function destroySession(token) {
   if (!token) return false;
   const redis = getRedisClient();
   const removed = await redis.del(sessionKey(token));
+  if (_sessionDestroyedHandler) {
+    try {
+      await _sessionDestroyedHandler(token);
+    } catch (err) {
+      // Revocation notification is best-effort; the authoritative Redis key is
+      // already gone and future connections will still be rejected.
+      console.error('[sessions] live-session revocation failed:', err);
+    }
+  }
   return removed > 0;
+}
+
+function setSessionDestroyedHandler(handler) {
+  _sessionDestroyedHandler = typeof handler === 'function' ? handler : null;
 }
 
 module.exports = {
   createSession,
   getSession,
   destroySession,
+  setSessionDestroyedHandler,
   refreshSession,
   SESSION_TTL_SECONDS,
   SESSION_KEY_PREFIX,

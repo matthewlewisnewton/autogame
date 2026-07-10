@@ -338,9 +338,4 @@ export function bindLobbyHandlers(s, ctx) {
 		}
 		ctx.applyQuestLayoutFromServer(data);
 	});
-
-	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (data) => {
-		if (!data || typeof data.line !== 'string') return;
-		ctx.showQuestDialogueToast(data.line, data.speaker);
-	});
 }

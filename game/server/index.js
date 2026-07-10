@@ -5,6 +5,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 const { THEME } = require('./theme');
 const {
   QUEST_DEFS,
@@ -23,7 +24,7 @@ const { findUserByAccountId, findUserByAccountIdAsync, unlockHat: unlockHatForAc
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const { parseCookies } = require('./cookies');
-const { getSession, destroySession } = require('./sessions');
+const { getSession, destroySession, setSessionDestroyedHandler } = require('./sessions');
 const { attachFlyReplayRouting } = require('./flyReplayHook');
 const {
   mulberry32,
@@ -94,6 +95,10 @@ const {
 } = require('./hubPresence');
 
 const app = express();
+if (process.env.NODE_ENV === 'production') {
+  const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 1);
+  app.set('trust proxy', Number.isInteger(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : 1);
+}
 // Harness readiness probe — same HTTP server as Socket.IO; no auth required.
 // Returns 503 until startServer() finishes mounting routes and socket handlers
 // so capture workers never proxy auth/socket traffic to a half-booted server.
@@ -108,16 +113,46 @@ app.get('/healthz', (_req, res) => {
   res.status(200).json({ ok: true });
 });
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*", // Adjust later for production
-    methods: ["GET", "POST"]
-  }
-});
+const configuredClientOrigins = String(process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const socketServerOptions = configuredClientOrigins.length > 0
+  ? { cors: { origin: configuredClientOrigins, methods: ['GET', 'POST'] } }
+  : {};
+const io = new Server(server, socketServerOptions);
 server.setMaxListeners(0);
 
 /** O(1) playerId → live socket; updated on connect/disconnect/eviction. */
 const playerSockets = new Map();
+const SESSION_REVOKED_EVENT = 'sessionRevoked';
+const LOBBY_BROWSER_ROOM = 'lobby-browser';
+
+function disconnectSocketsForSession(sessionToken) {
+  if (!sessionToken) return 0;
+  let disconnected = 0;
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.data?.sessionToken !== sessionToken) continue;
+    disconnected += 1;
+    socket.disconnect(true);
+  }
+  return disconnected;
+}
+
+async function validateSocketSession(socket) {
+  const sessionToken = socket?.data?.sessionToken;
+  if (!sessionToken || !(await getSession(sessionToken))) {
+    if (socket?.connected) socket.disconnect(true);
+    return false;
+  }
+  return true;
+}
+
+// Socket.IO's Redis adapter forwards serverSideEmit events to every other
+// instance, so an HTTP logout on one machine also revokes a WebSocket elsewhere.
+io.on(SESSION_REVOKED_EVENT, (sessionToken) => {
+  disconnectSocketsForSession(sessionToken);
+});
 
 // Game state factory — shared with lobbies.js to keep the canonical shape in one place
 const { createGameState } = require('./game-state');
@@ -226,6 +261,7 @@ const {
 } = require('./simulation');
 
 const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
+const ENEMY_DISPLAY_CATALOG = buildEnemyDisplayCatalog();
 const progression = require('./progression');
 const questDialogue = require('./questDialogue');
 const {
@@ -389,30 +425,66 @@ const keyItemEffects = require('./keyItemEffects');
 const debugScenarios = require('./debugScenarios');
 
 const _lobbyContextStack = [];
+const _lobbyContextScope = new AsyncLocalStorage();
+const _lobbyContextQueue = [];
+let _lobbyContextAsyncActive = false;
+
+function drainLobbyContextQueue() {
+  if (_lobbyContextAsyncActive || _lobbyContextQueue.length === 0) return;
+  const { lobby, fn, resolve, reject } = _lobbyContextQueue.shift();
+  let result;
+  try {
+    result = withLobbyContext(lobby, fn);
+  } catch (err) {
+    reject(err);
+    drainLobbyContextQueue();
+    return;
+  }
+  Promise.resolve(result).then(resolve, reject);
+}
 
 function withLobbyContext(lobby, fn) {
   if (!lobby || !lobby.state) return fn();
+  const inheritedOwner = _lobbyContextScope.getStore();
+  if (_lobbyContextAsyncActive && !inheritedOwner) {
+    return new Promise((resolve, reject) => {
+      _lobbyContextQueue.push({ lobby, fn, resolve, reject });
+    });
+  }
+
+  const owner = inheritedOwner || {};
+  const frame = { lobby, owner };
   sim.setGameState(lobby.state, _timeouts);
   setProgressionGameState(lobby.state);
-  _lobbyContextStack.push(lobby);
+  _lobbyContextStack.push(frame);
 
   const popContext = () => {
-    _lobbyContextStack.pop();
-    const parentLobby = _lobbyContextStack[_lobbyContextStack.length - 1];
-    const restoreState = parentLobby ? parentLobby.state : gameState;
+    const frameIndex = _lobbyContextStack.lastIndexOf(frame);
+    if (frameIndex !== -1) _lobbyContextStack.splice(frameIndex, 1);
+    const parentFrame = _lobbyContextStack[_lobbyContextStack.length - 1];
+    const restoreState = parentFrame ? parentFrame.lobby.state : gameState;
     sim.setGameState(restoreState, _timeouts);
     setProgressionGameState(restoreState);
   };
 
   try {
-    const result = fn();
+    const result = inheritedOwner ? fn() : _lobbyContextScope.run(owner, fn);
     if (result && typeof result.then === 'function') {
-      return result.finally(popContext);
+      if (!inheritedOwner) _lobbyContextAsyncActive = true;
+      return Promise.resolve(result).finally(() => {
+        popContext();
+        if (!inheritedOwner) {
+          _lobbyContextAsyncActive = false;
+          drainLobbyContextQueue();
+        }
+      });
     }
     popContext();
+    if (!inheritedOwner) drainLobbyContextQueue();
     return result;
   } catch (err) {
     popContext();
+    if (!inheritedOwner) drainLobbyContextQueue();
     throw err;
   }
 }
@@ -421,15 +493,32 @@ function getLobbyForSocket(socket) {
   return lobbies.getLobbyForPlayer(socket.playerId);
 }
 
-async function broadcastLobbyList() {
-  try {
-    await publishLocalLobbies();
-    const lobbyList = await listGlobalLobbySummaries();
-    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
-  } catch (err) {
-    console.error('[lobbyBrowser] broadcastLobbyList failed:', err);
-    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
-  }
+let _lobbyListBroadcastPromise = null;
+let _lobbyListBroadcastDirty = false;
+
+function broadcastLobbyList() {
+  _lobbyListBroadcastDirty = true;
+  if (_lobbyListBroadcastPromise) return _lobbyListBroadcastPromise;
+
+  _lobbyListBroadcastPromise = (async () => {
+    do {
+      _lobbyListBroadcastDirty = false;
+      try {
+        await publishLocalLobbies();
+        const lobbyList = await listGlobalLobbySummaries();
+        io.to(LOBBY_BROWSER_ROOM).emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
+      } catch (err) {
+        console.error('[lobbyBrowser] broadcastLobbyList failed:', err);
+        io.to(LOBBY_BROWSER_ROOM).emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, {
+          lobbies: lobbies.listLobbySummaries(),
+        });
+      }
+    } while (_lobbyListBroadcastDirty);
+  })().finally(() => {
+    _lobbyListBroadcastPromise = null;
+  });
+
+  return _lobbyListBroadcastPromise;
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -522,9 +611,11 @@ function cleanupStalePlayersInAllLobbies() {
 }
 
 function saveAllPlayersInAllLobbies() {
+  const saves = [];
   for (const lobby of lobbies._lobbies.values()) {
-    withLobbyContext(lobby, () => void saveAllPlayers());
+    saves.push(withLobbyContext(lobby, () => saveAllPlayers()));
   }
+  return Promise.all(saves);
 }
 
 /**
@@ -1088,9 +1179,21 @@ function installMainProcessErrorHandlers() {
 }
 
 function safeIntervalTick(label, fn) {
+  let running = false;
   return () => {
+    if (running) return;
     try {
-      fn();
+      const result = fn();
+      if (result && typeof result.then === 'function') {
+        running = true;
+        result
+          .catch((err) => {
+            console.error(`[interval:${label}]`, err && err.stack ? err.stack : err);
+          })
+          .finally(() => {
+            running = false;
+          });
+      }
     } catch (err) {
       console.error(`[interval:${label}]`, err && err.stack ? err.stack : err);
     }
@@ -1378,11 +1481,12 @@ async function joinLobbyWithPhasePolicy(socket, lobby) {
 }
 
 function emitLobbyJoined(socket, lobby, explicitPlayerId) {
-  const state = lobby.state;
+  const lobbyState = lobby.state;
   const playerId = explicitPlayerId ?? socket.playerId;
-  const player = state.players[playerId];
+  const player = lobbyState.players[playerId];
   if (!player) return;
-  withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
+  ensureShopOffer(lobbyState);
+  const state = stateSnapshot();
 
   const joinedPayload = {
     lobbyId: lobby.id,
@@ -1392,16 +1496,16 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     accountId: player.accountId,
     username: player.username,
     state,
-    layoutSeed: state.layoutSeed,
-    layout: state.layout,
+    layoutSeed: lobbyState.layoutSeed,
+    layout: lobbyState.layout,
     hubLayout: HUB_LAYOUT,
     selectedDeck: player.selectedDeck,
     inventory: player.inventory,
     ownedCards: player.ownedCards,
-    shopOffer: state.shopOffer,
-    ...buildQuestUpdatePayload(state, player.accountId),
+    shopOffer: lobbyState.shopOffer,
+    ...buildQuestUpdatePayload(lobbyState, player.accountId),
   };
-  if (isLobbyPhase(state)) {
+  if (isLobbyPhase(lobbyState)) {
     try {
       syncHubPresenceFromLobby(lobby);
       joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
@@ -1417,102 +1521,113 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
 
 async function joinPlayerToLobby(socket, lobby, options = {}) {
   const playerId = socket.playerId;
-  const state = lobby.state;
   const savedData = await loadSavedPlayerData(playerId);
+  if (!socket.connected) return false;
 
-  if (!state.players[playerId]) {
-    state.players[playerId] = buildPlayerRecord(
-      playerId,
-      socket.data.accountId,
-      socket.data.username,
-      savedData,
-    );
-  } else {
-    const player = state.players[playerId];
-    player.username = socket.data.username || player.username;
-    if (savedData) {
-      player.currency = savedData.currency ?? player.currency;
-      if (savedData.inventory || savedData.ownedCards) {
-        player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
-        player.ownedCards = inventoryToOwnedCards(player.inventory);
+  return withLobbyContext(lobby, () => {
+    if (!socket.connected) return false;
+    const state = lobby.state;
+
+    if (!state.players[playerId]) {
+      state.players[playerId] = buildPlayerRecord(
+        playerId,
+        socket.data.accountId,
+        socket.data.username,
+        savedData,
+      );
+    } else {
+      const player = state.players[playerId];
+      player.username = socket.data.username || player.username;
+      if (savedData) {
+        player.currency = savedData.currency ?? player.currency;
+        if (savedData.inventory || savedData.ownedCards) {
+          player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
+          player.ownedCards = inventoryToOwnedCards(player.inventory);
+        }
+        player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
+          ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
+          : player.selectedDeck;
+        player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
+        player.hp = savedData.hp ?? player.hp;
+        player.dead = savedData.dead ?? player.dead;
+        player.magicStones = savedData.magicStones ?? player.magicStones;
       }
-      player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
-        ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
-        : player.selectedDeck;
-      player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
-      player.hp = savedData.hp ?? player.hp;
-      player.dead = savedData.dead ?? player.dead;
-      player.magicStones = savedData.magicStones ?? player.magicStones;
+      normalizePlayerInventory(player);
+      if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';
+      if (player.keyItemCooldownUntil == null) player.keyItemCooldownUntil = 0;
+      if (!Array.isArray(player.debuffs)) player.debuffs = [];
     }
-    normalizePlayerInventory(player);
-    if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';
-    if (player.keyItemCooldownUntil == null) player.keyItemCooldownUntil = 0;
-    if (!Array.isArray(player.debuffs)) player.debuffs = [];
-  }
 
-  // Always revive dead/zero-HP players on reconnect to prevent soft-locks
-  revivePlayerInLobby(state.players[playerId]);
+    // Always revive dead/zero-HP players on reconnect to prevent soft-locks
+    revivePlayerInLobby(state.players[playerId]);
 
-  if (isLobbyPhase(state)) {
-    const lobbyPlayer = state.players[playerId];
-    const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
-    lobbyPlayer.x = hubSpawn.x;
-    lobbyPlayer.z = hubSpawn.z;
-    lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
-  }
-
-  if (options.dropIn) {
-    handleDropInJoin(socket, lobby);
-  }
-
-  const player = state.players[playerId];
-  player.activeSocketId = socket.id;
-  player.connected = true;
-  player.disconnectedAt = null;
-
-  lobbies.assignPlayerToLobby(playerId, lobby.id);
-  lobbies.removeSession(playerId);
-  socket.join(lobby.id);
-  emitLobbyJoined(socket, lobby);
-  if (isLobbyPhase(state)) {
-    try {
-      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
-    } catch (err) {
-      console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+    if (isLobbyPhase(state)) {
+      const lobbyPlayer = state.players[playerId];
+      const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+      lobbyPlayer.x = hubSpawn.x;
+      lobbyPlayer.z = hubSpawn.z;
+      lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
     }
-  }
+
+    if (options.dropIn) {
+      handleDropInJoin(socket, lobby);
+    }
+
+    const player = state.players[playerId];
+    player.activeSocketId = socket.id;
+    player.connected = true;
+    player.disconnectedAt = null;
+
+    lobbies.assignPlayerToLobby(playerId, lobby.id);
+    lobbies.removeSession(playerId);
+    socket.leave(LOBBY_BROWSER_ROOM);
+    socket.join(lobby.id);
+    emitLobbyJoined(socket, lobby);
+    if (isLobbyPhase(state)) {
+      try {
+        emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+      } catch (err) {
+        console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+      }
+    }
+    return true;
+  });
 }
 
 function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   const playerId = explicitPlayerId ?? socket.playerId;
-  const player = lobby.state.players[playerId];
-  if (!player) return false;
+  return withLobbyContext(lobby, () => {
+    if (!socket.connected) return false;
+    const player = lobby.state.players[playerId];
+    if (!player) return false;
 
-  evictPriorSocketForPlayer(playerId, socket.id);
+    evictPriorSocketForPlayer(playerId, socket.id);
 
-  player.activeSocketId = socket.id;
-  player.connected = true;
-  player.disconnectedAt = null;
-  player.lastInputSequence = 0;
-  player.inputActive = false;
-  player.inputDx = 0;
-  player.inputDz = 0;
-  player.lastActivity = Date.now();
+    player.activeSocketId = socket.id;
+    player.connected = true;
+    player.disconnectedAt = null;
+    player.lastInputSequence = 0;
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+    player.lastActivity = Date.now();
 
-  lobbies.assignPlayerToLobby(playerId, lobby.id);
-  lobbies.removeSession(playerId);
-  socket.join(lobby.id);
-  emitLobbyJoined(socket, lobby, playerId);
-  if (isLobbyPhase(lobby.state)) {
-    try {
-      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
-    } catch (err) {
-      console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+    lobbies.assignPlayerToLobby(playerId, lobby.id);
+    lobbies.removeSession(playerId);
+    socket.leave(LOBBY_BROWSER_ROOM);
+    socket.join(lobby.id);
+    emitLobbyJoined(socket, lobby, playerId);
+    if (isLobbyPhase(lobby.state)) {
+      try {
+        emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+      } catch (err) {
+        console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+      }
     }
-  }
-  io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_RECONNECTED, playerId);
-  broadcastLobbyList();
-  return true;
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_RECONNECTED, playerId);
+    broadcastLobbyList();
+    return true;
+  });
 }
 
 function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false } = {}) {
@@ -1718,16 +1833,21 @@ function resolveProjectileAim(player, data, state) {
 }
 
 function runGameLoopTick() {
+  // Async card resolution keeps the owning lobby context active until its
+  // continuation finishes. Skip overlapping interval ticks instead of building
+  // a stale backlog behind that context.
+  if (_lobbyContextAsyncActive && !_lobbyContextScope.getStore()) return true;
   for (const lobby of lobbies._lobbies.values()) {
     try {
-      withLobbyContext(lobby, () => {
+      const contextResult = withLobbyContext(lobby, () => {
         const state = lobby.state;
+        let pendingWindups = null;
         if (isLobbyPhase(state)) {
           applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
           syncAndEmitHubPresenceIfChanged(io, lobby);
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
-          void processPendingCardWindups();
+          pendingWindups = processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
           updateQuestDialogueRoomEntry();
           checkTelepipeProximity();
@@ -1811,9 +1931,19 @@ function runGameLoopTick() {
 
         if (!state._applyingDebugScenario) {
           const snapshot = hotStateSnapshot();
-          io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+          const room = io.to(lobby.id);
+          const target = room.volatile && typeof room.volatile.emit === 'function'
+            ? room.volatile
+            : room;
+          target.emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
         }
+        return pendingWindups;
       });
+      if (contextResult && typeof contextResult.then === 'function') {
+        contextResult.catch((err) => {
+          console.error(`[gameLoop] lobby ${lobby.id} async tick failed:`, err && err.stack ? err.stack : err);
+        });
+      }
     } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
     }
@@ -1935,6 +2065,13 @@ async function startServer(port) {
     _redisAdapterAttached = true;
   }
 
+  setSessionDestroyedHandler(async (sessionToken) => {
+    disconnectSocketsForSession(sessionToken);
+    if (_redisAdapterAttached && typeof io.serverSideEmit === 'function') {
+      io.serverSideEmit(SESSION_REVOKED_EVENT, sessionToken);
+    }
+  });
+
   // Restart the rate-limit sweep after clearing all timers
   startRateLimitSweep();
 
@@ -1976,6 +2113,7 @@ async function startServer(port) {
 
       socket.data.accountId = session.accountId;
       socket.data.username = user.username;
+      socket.data.sessionToken = sessionToken;
       return next();
     });
     _middlewareRegistered = true;
@@ -1983,6 +2121,12 @@ async function startServer(port) {
 
   io.on('connection', async (socket) => {
     try {
+    let disconnectedDuringSetup = false;
+    // Register before the first persistence await so a transport that vanishes
+    // during setup cannot be resurrected into the socket/session maps later.
+    socket.once('disconnect', () => {
+      disconnectedDuringSetup = true;
+    });
     patchSocketOn(socket);
 
     // ── Session authentication (required) ──
@@ -1998,7 +2142,15 @@ async function startServer(port) {
     const playerId = accountId;
 
     const savedData = await loadSavedPlayerData(accountId || playerId);
+    if (disconnectedDuringSetup || !socket.connected) return;
+
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
+
+    socket.playerId = playerId;
+    // The product maintains one authoritative socket per account. Apply that
+    // rule in the browser as well as during lobby reconnects.
+    evictPriorSocketForPlayer(playerId, socket.id);
+    registerPlayerSocket(playerId, socket);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
     const ctx = {
@@ -2033,7 +2185,9 @@ async function startServer(port) {
       softDisconnectPlayerFromLobby,
       unregisterPlayerSocket,
       hubLayout: HUB_LAYOUT,
+      lobbyBrowserRoom: LOBBY_BROWSER_ROOM,
       syncLivePlayerCosmetic,
+      validateSocketSession,
     };
     lobbyHandlers.register(socket, ctx);
 
@@ -2043,12 +2197,14 @@ async function startServer(port) {
       const priorSocket = findSocketByPlayerId(playerId, socket.id);
       const hasLiveSocket = priorSocket && priorSocket.connected;
       if (player.connected === false || hasLiveSocket) {
-        reconnectPlayerToLobby(socket, resumeLobby, playerId);
+        await reconnectPlayerToLobby(socket, resumeLobby, playerId);
       }
     }
 
-    socket.playerId = playerId;
-    registerPlayerSocket(playerId, socket);
+    if (!lobbies.getLobbyForPlayer(playerId)) {
+      await socket.join(LOBBY_BROWSER_ROOM);
+    }
+
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
     void (async () => {
@@ -2064,7 +2220,7 @@ async function startServer(port) {
         ownedCards: sessionPlayer.ownedCards,
         lobbies: lobbyList,
         keyItemDefs: KEY_ITEM_DEFS,
-        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+        enemyDisplayCatalog: ENEMY_DISPLAY_CATALOG,
       });
 
       void broadcastLobbyList();
@@ -2081,7 +2237,7 @@ async function startServer(port) {
         ownedCards: sessionPlayer.ownedCards,
         lobbies: lobbies.listLobbySummaries(),
         keyItemDefs: KEY_ITEM_DEFS,
-        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+        enemyDisplayCatalog: ENEMY_DISPLAY_CATALOG,
       });
       void broadcastLobbyList();
     });
