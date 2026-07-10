@@ -273,7 +273,7 @@ describe('WebSocket session-cookie authentication', () => {
 		await disconnected;
 
 		expect(socket.connected).toBe(false);
-		expect(getLobbySession(user.accountId)).toBeUndefined();
+		expect(getLobbySession(user.accountId)).toBeNull();
 	});
 
 	it('does not retain socket/session state when disconnect happens during setup', async () => {
@@ -296,7 +296,7 @@ describe('WebSocket session-cookie authentication', () => {
 		await new Promise((resolve) => setTimeout(resolve, 50));
 
 		expect(findSocketByPlayerId(user.accountId)).toBeNull();
-		expect(getLobbySession(user.accountId)).toBeUndefined();
+		expect(getLobbySession(user.accountId)).toBeNull();
 	});
 
 	it('heartbeat disconnects a socket when its backing session disappeared', async () => {

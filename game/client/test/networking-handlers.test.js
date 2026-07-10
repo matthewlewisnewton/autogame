@@ -28,6 +28,7 @@ function stateContext() {
 		currentLayout: null,
 		hubLayout: null,
 		currentLayoutSeed: null,
+		lobbyEl: null,
 		renderHand: vi.fn(),
 		isLevelSettingsOpen: () => false,
 		syncLocalCollectionState: () => false,
