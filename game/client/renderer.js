@@ -429,9 +429,8 @@ export function disposeRenderer() {
  * Dispose combat/world entity meshes (enemies, minions, loot, VFX, …).
  * Does not touch player avatars or dungeon geometry — use clearSceneOwnedContent
  * / resetSceneWorld for a full world restart.
- * @deprecated Prefer resetSceneWorld() for hub↔quest transitions.
  */
-export function clearWorldEntityMeshes() {
+function clearWorldEntityMeshes() {
 	const sc = scene || getScene();
 	disposeMeshMap(enemiesMeshes, sc);
 	disposeMeshMap(enemyHealthBars, sc);
