@@ -40,6 +40,13 @@ function listSocketHandlerFiles() {
 		.map((name) => `server/socketHandlers/${name}`);
 }
 
+function listClientSocketHandlerFiles() {
+	const dir = join(gameRoot, 'client/socketHandlers');
+	return readdirSync(dir)
+		.filter((name) => name.endsWith('.js'))
+		.map((name) => `client/socketHandlers/${name}`);
+}
+
 /** Strip comments so doc/inline references like socket.on('useCard') are not scanned. */
 function stripComments(source) {
 	return source
@@ -157,7 +164,8 @@ describe('socket event drift guard', () => {
 	});
 
 	it('production client files only use catalogued wire strings for s.on(, socket.emit(, socket.once(, socket.off(, and socketRef.emit(', () => {
-		const offenses = CLIENT_PRODUCTION_FILES.flatMap(scanClientFile);
+		const paths = [...CLIENT_PRODUCTION_FILES, ...listClientSocketHandlerFiles()];
+		const offenses = paths.flatMap(scanClientFile);
 		expect(offenses, formatOffenses(offenses)).toEqual([]);
 	});
 });

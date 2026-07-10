@@ -1215,6 +1215,9 @@ if (deepLinkLobbyParam) {
 function emitPendingLobbyJoin(sock = socket) {
 	if (!pendingLobbyJoin || !sock) return;
 	sock.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: pendingLobbyJoin.lobbyId });
+}
+
+function clearPendingLobbyJoin() {
 	pendingLobbyJoin = null;
 }
 
@@ -1255,7 +1258,11 @@ function handleLobbyDeepLinkAfterInit(lobbies) {
  * Auth is handled via the browser's httpOnly session cookie, sent automatically
  * on same-origin WebSocket upgrades. */
 function createSocket(options) {
-	if (socket) socket.disconnect();
+	if (socket) {
+		stopHeartbeat();
+		clearConnectWatchdog();
+		socket.disconnect();
+	}
 	const affinity = options && typeof options === 'object' ? options : {};
 	const { lobbyId, flyInstanceId } = affinity;
 	const ioConfig = {
@@ -1518,11 +1525,13 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	startConnectWatchdog,
 	startHeartbeat,
 	stopHeartbeat,
+	isCurrentSocket: (candidate) => socket === candidate,
 	updateStatus,
 	statusEl,
 	showLobbyBrowserError,
 	disposeAllLootMeshes: rendererDisposeAllLootMeshes,
 	setAuthToken,
+	resetClientSessionState,
 	uiEl,
 	giveUpBtnEl,
 	cardHandEl,
@@ -1635,6 +1644,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	showQuestDialogueToast,
 	applyDebugTimeScale,
 	emitPendingLobbyJoin,
+	clearPendingLobbyJoin,
 	handleLobbyDeepLinkAfterInit,
 });
 
@@ -2129,7 +2139,11 @@ window.__evolveCardForTest = (instanceId, timeoutMs) => new Promise((resolve) =>
 function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
-		socket.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
+		if (!socket || socket.connected === false) return;
+		const target = socket.volatile && typeof socket.volatile.emit === 'function'
+			? socket.volatile
+			: socket;
+		target.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
 	}, 2000);
 }
 
@@ -3989,6 +4003,26 @@ if (loginBtnEl) {
 	});
 }
 
+function resetClientSessionState() {
+	myId = null;
+	rendererSetMyId(null);
+	gameState = null;
+	setGameStateRef(null);
+	isReady = false;
+	launchReadyPending = false;
+	pendingTradeOffer = null;
+	suspendedRunSummary = null;
+	currentCardChoices = [];
+	claimedCardRewardId = null;
+	extractedLobbyOverlayActive = false;
+	_lastReturnRewardsPreview = null;
+	_prevDashX = null;
+	_prevDashZ = null;
+	keyItemCooldownUntilClient = 0;
+	stopHeartbeat();
+	clearConnectWatchdog();
+}
+
 async function performLogout() {
 	closeAccountOverlay();
 	try { await fetch("/api/logout", { method: "POST" }); } catch (_) {}
@@ -3996,7 +4030,7 @@ async function performLogout() {
 	currentLobbyName = '';
 	if (socket) socket.disconnect();
 
-	myId = null;
+	resetClientSessionState();
 	hideAppToolbar();
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();

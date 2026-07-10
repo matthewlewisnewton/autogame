@@ -10,6 +10,7 @@ import {
 	clearAllTimers,
 	setTestProvider,
 	destroySession as serverDestroySession,
+	findSocketByPlayerId,
 } from '../index.js';
 import { InMemoryProvider, PostgresProvider } from '../providers.js';
 import { USERS_SCHEMA_SQL } from '../db/ensurePlayersSchema.js';
@@ -20,6 +21,25 @@ const { getSession: getLobbySession, getSessionCount } = require('../lobbies.js'
 const { createSession, destroySession } = require('../sessions.js');
 const { SESSION_COOKIE_NAME } = require('../cookies.js');
 const { createUser, createUserAsync, clearUsers, clearUserCaches } = require('../users.js');
+const { getRedisClient } = require('../redis.js');
+
+class BlockingLoadProvider extends InMemoryProvider {
+	arm() {
+		this.blocked = true;
+		this.hit = new Promise((resolve) => { this.signalHit = resolve; });
+		this.gate = new Promise((resolve) => { this.release = resolve; });
+	}
+
+	async loadPlayer(playerId) {
+		const value = await super.loadPlayer(playerId);
+		if (this.blocked) {
+			this.blocked = false;
+			this.signalHit();
+			await this.gate;
+		}
+		return value;
+	}
+}
 
 // ── Helpers ──
 
@@ -241,6 +261,55 @@ describe('WebSocket session-cookie authentication', () => {
 		expect(reason).toBe('connect_error');
 		expect(error).toBe('Invalid or expired session');
 		expect(getSessionCount()).toBe(0);
+	});
+
+	it('disconnects an already-connected socket when its session is destroyed', async () => {
+		const user = createTestUser('live-revocation-user');
+		const sessionToken = await createSession(user.accountId);
+		const { socket } = await connectWithSessionCookie(baseUrl, sessionToken);
+		const disconnected = new Promise((resolve) => socket.once('disconnect', resolve));
+
+		expect(await destroySession(sessionToken)).toBe(true);
+		await disconnected;
+
+		expect(socket.connected).toBe(false);
+		expect(getLobbySession(user.accountId)).toBeUndefined();
+	});
+
+	it('does not retain socket/session state when disconnect happens during setup', async () => {
+		const user = createTestUser('disconnect-during-setup-user');
+		const sessionToken = await createSession(user.accountId);
+		const provider = new BlockingLoadProvider();
+		setTestProvider(provider);
+		provider.arm();
+
+		const socket = ClientIO(baseUrl, {
+			transports: ['websocket'],
+			reconnection: false,
+			extraHeaders: { cookie: `${SESSION_COOKIE_NAME}=${sessionToken}` },
+		});
+		await new Promise((resolve) => socket.once('connect', resolve));
+		await provider.hit;
+		socket.disconnect();
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		provider.release();
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(findSocketByPlayerId(user.accountId)).toBeNull();
+		expect(getLobbySession(user.accountId)).toBeUndefined();
+	});
+
+	it('heartbeat disconnects a socket when its backing session disappeared', async () => {
+		const user = createTestUser('heartbeat-expiry-user');
+		const sessionToken = await createSession(user.accountId);
+		const { socket } = await connectWithSessionCookie(baseUrl, sessionToken);
+		await getRedisClient().del(`session:${sessionToken}`);
+		const disconnected = new Promise((resolve) => socket.once('disconnect', resolve));
+
+		socket.emit('heartbeat', { timestamp: Date.now() });
+		await disconnected;
+
+		expect(socket.connected).toBe(false);
 	});
 
 	it('attaches accountId from session to socket.data.accountId and exposes it in init payload', async () => {

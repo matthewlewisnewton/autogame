@@ -60,10 +60,13 @@ function register(socket, ctx) {
     softDisconnectPlayerFromLobby,
     unregisterPlayerSocket,
     hubLayout,
+    lobbyBrowserRoom,
     syncLivePlayerCosmetic,
+    validateSocketSession,
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
+    socket.join(lobbyBrowserRoom);
     void listGlobalLobbySummaries()
       .then((lobbyList) => {
         socket.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
@@ -75,52 +78,60 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
-    if (lobbies.getLobbyForPlayer(playerId)) {
-      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-      return;
-    }
-    const lobby = lobbies.createLobby(data && data.name);
-    withLobbyContext(lobby, () => {
-      applyLayoutForQuest(
-        lobby.state,
-        lobby.state.selectedQuestId,
-        lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-      );
-      ensureShopOffer();
-    });
-    void joinPlayerToLobby(socket, lobby).catch((err) => {
-      console.error('[lobbyHandlers] joinPlayerToLobby failed:', err);
+    return lobbies.withMembershipLock(async () => {
+      if (!socket.connected) return;
+      if (lobbies.getLobbyForPlayer(playerId)) {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
+        return;
+      }
+      const lobby = lobbies.createLobby(data && data.name);
+      withLobbyContext(lobby, () => {
+        applyLayoutForQuest(
+          lobby.state,
+          lobby.state.selectedQuestId,
+          lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+        );
+        ensureShopOffer();
+      });
+      try {
+        const joined = await joinPlayerToLobby(socket, lobby);
+        if (!joined) lobbies.deleteLobbyIfEmpty(lobby.id);
+      } catch (err) {
+        lobbies.deleteLobbyIfEmpty(lobby.id);
+        throw err;
+      }
     });
   });
 
   socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
-    const existingLobby = lobbies.getLobbyForPlayer(playerId);
-    if (existingLobby) {
-      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-      const player = existingLobby.state.players[playerId];
-      if (player && player.connected === false && lobbyId === existingLobby.id) {
-        reconnectPlayerToLobby(socket, existingLobby);
+    return lobbies.withMembershipLock(async () => {
+      if (!socket.connected) return;
+      const existingLobby = lobbies.getLobbyForPlayer(playerId);
+      if (existingLobby) {
+        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+        const player = existingLobby.state.players[playerId];
+        if (player && player.connected === false && lobbyId === existingLobby.id) {
+          await reconnectPlayerToLobby(socket, existingLobby);
+          return;
+        }
+        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
         return;
       }
-      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-      return;
-    }
-    const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-    if (!lobbyId) {
-      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
-      return;
-    }
-    const lobby = lobbies.getLobbyById(lobbyId);
-    if (!lobby) {
-      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
-      return;
-    }
-    if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
-      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
-      return;
-    }
-    void joinLobbyWithPhasePolicy(socket, lobby).catch((err) => {
-      console.error('[lobbyHandlers] joinLobbyWithPhasePolicy failed:', err);
+      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+      if (!lobbyId) {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
+        return;
+      }
+      const lobby = lobbies.getLobbyById(lobbyId);
+      if (!lobby) {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
+        return;
+      }
+      if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
+        return;
+      }
+      await joinLobbyWithPhasePolicy(socket, lobby);
     });
   });
 
@@ -130,6 +141,7 @@ function register(socket, ctx) {
       return;
     }
     leaveLobbyForSocket(socket);
+    socket.join(lobbyBrowserRoom);
     const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
     lobbies.registerSession(playerId, session);
     void listGlobalLobbySummaries()
@@ -453,11 +465,12 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on(CLIENT_TO_SERVER.HEARTBEAT, (data) => {
+  socket.on(CLIENT_TO_SERVER.HEARTBEAT, async (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
       return;
     }
+    if (!(await validateSocketSession(socket))) return;
     const lobby = lobbies.getLobbyForPlayer(socket.playerId);
     if (lobby && lobby.state.players[socket.playerId]) {
       lobby.state.players[socket.playerId].lastActivity = Date.now();

@@ -24,7 +24,7 @@ Cookie attributes: `Path=/`, `HttpOnly`, `SameSite=Lax`, and `Secure` in product
 
 ## WebSocket authentication
 
-Socket.IO middleware in `game/server/index.js` parses the same `ag_session` cookie from `socket.handshake.headers.cookie`, calls `getSession(sessionToken)`, and attaches `socket.data.accountId` / `socket.data.username` before the connection is accepted. The browser sends the cookie automatically on the upgrade handshake when client and server are same-origin (or when cross-origin cookies are configured correctly).
+Socket.IO middleware in `game/server/index.js` parses the same `ag_session` cookie from `socket.handshake.headers.cookie`, calls `getSession(sessionToken)`, and attaches `socket.data.accountId` / `socket.data.username` before the connection is accepted. The browser sends the cookie automatically on the upgrade handshake when client and server are same-origin. Destroying a session disconnects matching live sockets locally and publishes a Socket.IO server-side revocation event through the Redis adapter.
 
 ## Production
 
@@ -36,6 +36,10 @@ DATABASE_URL=postgres://...
 REDIS_URL=redis://...
 NODE_ENV=production
 PORT=8080
+# Optional for a separately hosted client (comma-separated allowlist):
+CLIENT_ORIGIN=https://game.example.com
+# Number of trusted reverse-proxy hops (defaults to 1 in production):
+TRUST_PROXY_HOPS=1
 ```
 
 Example Fly deploy secrets:
@@ -58,14 +62,16 @@ User account data (registrations, profiles, settings) is persisted separately vi
 
 ## Auth rate limiting (multi-instance)
 
-**Policy:** Auth rate limits (`isRateLimited`, `incrementRateLimit`, `startRateLimitSweep` in `game/server/auth.js`) are **in-memory per process**, not Redis-backed. This is an explicit decision for the current scale; single-instance behavior is unchanged.
+**Policy:** Login and registration failures use Redis-backed fixed-window counters
+when `REDIS_URL` is configured, so limits are shared across horizontally scaled
+instances. Development without Redis falls back to the in-memory limiter.
 
 ### What is rate-limited
 
 | Action | Route / middleware | Counting |
 |--------|-------------------|----------|
-| `register` | `POST /api/register` | Every attempt |
-| `login` | `POST /api/login` | Every attempt |
+| `register` | `POST /api/register` | Failed attempts |
+| `login` | `POST /api/login` | Failed attempts |
 | `admin` | `requireAdminPassword` in `game/server/admin.js` | Failed password attempts only |
 
 Buckets are keyed by `action:ip:username` (username lowercased; IP from `req.ip` or socket remote address). Defaults: **10 attempts per 60 seconds** per key, overridable via `AUTH_RATE_LIMIT_MAX_ATTEMPTS` and `AUTH_RATE_LIMIT_WINDOW_MS`.
@@ -74,21 +80,11 @@ Exceeding the limit returns HTTP **429** with a generic error message.
 
 ### Implementation
 
-- `rateLimitBuckets` — a module-level `Map` in `auth.js` holding `{ windowStart, attempts }` per key.
-- `pruneExpiredBuckets()` — deletes entries whose `windowStart` is older than `RATE_LIMIT_WINDOW_MS`.
-- `startRateLimitSweep()` — starts a `setInterval` every `RATE_LIMIT_SWEEP_INTERVAL_MS` (60s) to run `pruneExpiredBuckets()` locally on that process. Called once at server boot from `game/server/index.js`. Idempotent.
-
-### Multi-instance implication
-
-Each server process maintains **its own** counters. An attacker could spread attempts across instances (e.g. round-robin through a load balancer) and effectively multiply the allowed attempts by the instance count. **This is accepted** at current scale.
-
-Revisit a shared store (e.g. Redis) when:
-
-- You run many instances behind a load balancer and brute-force volume becomes a concern.
-- You need a global cap independent of instance count.
-- Compliance or threat modeling requires centralized rate limiting.
-
-Until then, per-instance limits still protect each process from local abuse and keep deployment simple (no Redis dependency for auth rate limits — Redis is still required for shared sessions in multi-instance production).
+- Redis deployments use hashed `auth-rate:*` keys with expiry matching
+  `AUTH_RATE_LIMIT_WINDOW_MS`.
+- `rateLimitBuckets` remains the no-Redis fallback and is pruned by
+  `startRateLimitSweep()`.
+- Successful login and registration requests do not consume the failure budget.
 
 ### Tests
 

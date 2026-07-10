@@ -9,6 +9,11 @@ const { serverToClient: SERVER_TO_CLIENT } = eventsCatalog;
 export function bindStateHandlers(s, ctx) {
 	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
 		const previousPhase = ctx.gameState && ctx.gameState.gamePhase;
+		const previousMe = ctx.myId && ctx.gameState?.players?.[ctx.myId];
+		const incomingMe = ctx.myId && state?.players?.[ctx.myId];
+		const hasAuthoritativeHand = Array.isArray(incomingMe?.hand);
+		const magicStonesChanged = Number.isFinite(incomingMe?.magicStones)
+			&& incomingMe.magicStones !== previousMe?.magicStones;
 		if (ctx.myId && state?.players?.[ctx.myId] && ctx.gameState?.players?.[ctx.myId]) {
 			const prevHand = ctx.gameState.players[ctx.myId].hand;
 			if (Array.isArray(prevHand) && !Array.isArray(state.players[ctx.myId].hand)) {
@@ -157,7 +162,11 @@ export function bindStateHandlers(s, ctx) {
 		ctx.updateBossEncounterHud();
 
 		// Reconcile hand with server authority + re-render for .no-ms / .empty classes
-		if (state.gamePhase === 'playing' && ctx.myId && state.players[ctx.myId] && state.players[ctx.myId].hand) {
+		if (state.gamePhase === 'playing'
+			&& ctx.myId
+			&& state.players[ctx.myId]
+			&& state.players[ctx.myId].hand
+			&& (hasAuthoritativeHand || magicStonesChanged)) {
 			const serverPlayer = state.players[ctx.myId];
 			const serverHand = serverPlayer.hand;
 			hand.length = 0;
@@ -174,7 +183,7 @@ export function bindStateHandlers(s, ctx) {
 			}
 			ctx.renderHand();
 			ctx.updateDeckVisuals();
-		} else if (state.gamePhase === 'playing') {
+		} else if (state.gamePhase === 'playing' && enteringPlaying) {
 			ctx.renderHand();
 		}
 

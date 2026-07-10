@@ -164,6 +164,14 @@ class MemoryStore {
     return this.strings.has(key) ? this.strings.get(key) : null;
   }
 
+  async incr(key) {
+    this.purgeIfExpired(key);
+    const current = Number(this.strings.get(key) || 0);
+    const next = current + 1;
+    this.strings.set(key, String(next));
+    return next;
+  }
+
   async del(...keys) {
     let removed = 0;
     for (const key of keys) {
@@ -302,6 +310,7 @@ function createMemoryRedisClient() {
     hdel: (...args) => store.hdel(...args),
     set: (...args) => store.set(...args),
     get: (...args) => store.get(...args),
+    incr: (...args) => store.incr(...args),
     del: (...args) => store.del(...args),
     expire: (...args) => store.expire(...args),
     scan: (...args) => store.scan(...args),
