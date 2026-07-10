@@ -767,7 +767,7 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
 	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
 	// on every lobby-phase stateUpdate.
-	if (rebuildHub && isSceneInitialized() && hubLayout) {
+	if ((rebuildHub || renderedSceneProfile !== 'hub') && isSceneInitialized() && hubLayout) {
 		renderHubScene();
 	} else {
 		setGamePhase('lobby');
@@ -5159,7 +5159,7 @@ function bandAtLayout(layout, x, z) {
 	return null;
 }
 function activeHarnessLayout() {
-	return (gameState?.gamePhase === 'lobby' && hubLayout && renderedSceneProfile === 'hub')
+	return (hubLayout && renderedSceneProfile === 'hub')
 		? hubLayout
 		: (currentLayout || (gameState && gameState.layout) || null);
 }

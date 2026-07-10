@@ -153,6 +153,10 @@ function disposeMaterialMapsSafe(material) {
 	const mats = Array.isArray(material) ? material : [material];
 	for (const mat of mats) {
 		if (!mat) continue;
+		// A shared material owns shared texture references too. Disposing or
+		// nulling its map would poison the glTF/theme cache and every surviving
+		// clone that references the same material.
+		if (isSharedModelResource(mat)) continue;
 		if (mat.map && !isSharedModelResource(mat.map)) {
 			mat.map.dispose();
 			mat.map = null;

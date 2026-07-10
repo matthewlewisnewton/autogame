@@ -263,6 +263,9 @@ const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 // not shared (camera/renderer/clock, nameplate offsets, card-windup markers,
 // phase-step targeting, etc.) stays here.
 let scene, camera, renderer, clock;
+// Incremented whenever a fresh THREE.Scene root is installed. Async model loads
+// capture this value so they cannot attach to hosts from an abandoned world.
+let worldGeneration = 0;
 // NAMEPLATE_OFFSET_Y + the card-windup marker/flashing stores are read by
 // ./renderer/playerSync.js (call-time only); exported so it shares the live
 // references rather than re-declaring them.
@@ -440,6 +443,9 @@ export function disposeRenderer() {
  * nodes and non-Object3D combat bookkeeping.
  */
 function clearSceneOwnedContent() {
+	// Invalidate async work targeting the scene before releasing its graph.
+	worldGeneration += 1;
+
 	for (const dn of damageNumbers) dn.element?.remove();
 	damageNumbers.length = 0;
 
@@ -564,6 +570,7 @@ export function resetSceneWorld(layout, spawnPos, passageLocks) {
 	clearSceneOwnedContent();
 
 	scene = new THREE.Scene();
+	worldGeneration += 1;
 	setScene(scene);
 	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 	addDefaultLights(scene);
@@ -1012,6 +1019,7 @@ export function attachRegistryModel(key, host) {
 
 	const path = modelPathFor(key);
 	if (!path) return; // null/absent path → keep procedural (the only path this ticket).
+	const requestedGeneration = worldGeneration;
 
 	// Snapshot the procedural meshes now so a later swap hides only the
 	// primitives, not the model we're about to attach.
@@ -1023,6 +1031,12 @@ export function attachRegistryModel(key, host) {
 	loadModel(path)
 		.then((model) => {
 			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			// The host belonged to a scene root that has since been abandoned.
+			// Do not attach a late model clone to that orphaned graph.
+			if (requestedGeneration !== worldGeneration) {
+				disposeMeshTreeSafe(model);
+				return;
+			}
 			const footprint = getRegistryTargetFootprint(key);
 			if (footprint) {
 				normalizeLoadedRegistryModel(model, footprint);
@@ -2161,6 +2175,7 @@ export function initScene(layout, spawnPos) {
 
 	// Scene
 	scene = new THREE.Scene();
+	worldGeneration += 1;
 	setScene(scene); // share the live scene with rendererState.js (getScene() consumers)
 	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 
