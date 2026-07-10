@@ -123,7 +123,12 @@ function stubClass(name) {
 		this.children.push(child);
 		return this;
 	};
-	C.prototype.remove = function() { return this; };
+	C.prototype.remove = function(child) {
+		if (!this.children || child == null) return this;
+		const idx = this.children.indexOf(child);
+		if (idx !== -1) this.children.splice(idx, 1);
+		return this;
+	};
 	C.prototype.traverse = function(cb) {
 		cb(this);
 		if (this.children) {
@@ -343,7 +348,11 @@ export const THREE = {
 			this.children.push(child);
 			return this;
 		}
-		remove() { return this; }
+		remove(child) {
+			const idx = this.children.indexOf(child);
+			if (idx !== -1) this.children.splice(idx, 1);
+			return this;
+		}
 		traverse(cb) {
 			cb(this);
 			for (const child of this.children) {

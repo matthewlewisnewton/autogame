@@ -114,6 +114,27 @@ describe('disposeMeshTreeSafe', () => {
 		expect(materialDisposeSpy).not.toHaveBeenCalled();
 	});
 
+	it('does not dispose or detach a texture map owned by a shared material', async () => {
+		const texture = { dispose: vi.fn() };
+		const scene = makeGltfScene();
+		scene.children[0].material.map = texture;
+		gltfLoadMock.mockImplementation((_path, onLoad) => {
+			onLoad({ scene });
+		});
+
+		const cloneA = await loadModel('/models/textured.glb');
+		const cloneB = await loadModel('/models/textured.glb');
+		let survivorMaterial;
+		cloneB.traverse((node) => {
+			if (node.isMesh) survivorMaterial = node.material;
+		});
+
+		disposeMeshTreeSafe(cloneA);
+
+		expect(texture.dispose).not.toHaveBeenCalled();
+		expect(survivorMaterial.map).toBe(texture);
+	});
+
 	it('disposes owned procedural geometry and material', () => {
 		const geometry = { dispose: vi.fn() };
 		const material = { dispose: vi.fn() };

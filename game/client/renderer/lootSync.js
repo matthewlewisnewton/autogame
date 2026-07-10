@@ -277,6 +277,38 @@ export function resetLootSyncState() {
 }
 
 /**
+ * Drop loot-domain bookkeeping after the scene graph has already been abandoned
+ * (no per-mesh dispose — the root teardown owns GPU cleanup).
+ */
+export function forgetLootSyncState() {
+	for (const id of Object.keys(collectingLoot)) delete collectingLoot[id];
+	for (const id of Object.keys(previousLootValues)) delete previousLootValues[id];
+}
+
+/**
+ * Tear down the telepipe portal mesh immediately (hub return / scene reset).
+ * syncTelepipeMesh() only disposes when gameState.telepipe is absent; hub
+ * transitions must clear the portal even while a mid-run snapshot still
+ * carries telepipe data.
+ */
+export function clearTelepipePortal() {
+	if (!telepipeMesh) return;
+	disposeTelepipeMesh();
+	telepipeMesh = null;
+	telepipeParticles.length = 0;
+	telepipeShimmerPhase = 0;
+}
+
+/**
+ * Forget telepipe module state after the scene graph has already been abandoned.
+ */
+export function forgetTelepipePortal() {
+	telepipeMesh = null;
+	telepipeParticles.length = 0;
+	telepipeShimmerPhase = 0;
+}
+
+/**
  * Sync the shared telepipe portal mesh with gameState.telepipe.
  * Creates an animated group: shimmer cylinder, two orbiting torus rings,
  * and a rising particle column.

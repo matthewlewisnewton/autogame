@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MODEL_REGISTRY, modelPathFor, loadModel, _clearModelCache } from '../models.js';
-import { createPlayerAvatar, createEnemyMesh } from '../renderer.js';
+import { createPlayerAvatar, createEnemyMesh, disposeRenderer } from '../renderer.js';
 
 /** Enemy/minion keys wired in ticket 162 (parent mapping) plus the plaza arena_champion boss. */
 const ENTITY_MODEL_PATHS = {
@@ -247,5 +247,23 @@ describe('registry attach fallback (renderer)', () => {
 		expect(mesh.userData.bodyMesh._origEmissiveIntensity).toBe(0);
 		expect(mesh._origColor).toBe(0xabcdef);
 		expect(mesh._origEmissive).toBe(ENEMY_GEOMETRY.grunt.emissive ?? 0x000000);
+	});
+
+	it('does not attach a model that resolves after its world is disposed', async () => {
+		let resolveLoad;
+		gltfLoadMock.mockImplementation((_path, onLoad) => {
+			resolveLoad = onLoad;
+		});
+
+		const mesh = createEnemyMesh('grunt');
+		await vi.waitFor(() => expect(resolveLoad).toBeTypeOf('function'));
+
+		disposeRenderer();
+		resolveLoad({ scene: makeFakeEnemyScene(0xabcdef) });
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(mesh.userData.modelOverride).toBeUndefined();
+		expect(mesh.material.visible).not.toBe(false);
 	});
 });

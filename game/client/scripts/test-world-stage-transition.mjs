@@ -89,11 +89,12 @@ async function startSoloRun(page) {
 		document.getElementById('create-lobby-name').value = 'World Stage QA';
 		document.getElementById('create-lobby-btn')?.click();
 	});
+	// Hub UX starts with the lobby menu dismissed — wait for harness lobby phase.
 	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 10000 });
-	await page.evaluate(() => document.getElementById('ready-btn')?.click());
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.phase === 'lobby' && h.sceneInitialized === true;
+	}, { timeout: 15000 });
+	await page.evaluate(() => window.__launchReadyUpForTest?.());
 	await page.waitForFunction(() => {
 		const ui = document.getElementById('ui');
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();

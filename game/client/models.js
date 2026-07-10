@@ -79,6 +79,27 @@ function tagSharedMaterials(material) {
 }
 
 /**
+ * Mark material(s) as retained across scene teardowns (dungeon theme caches,
+ * other module-level shared mats). Geometry is left alone so procedural meshes
+ * can still free their buffers when the scene graph is abandoned.
+ * @param {import('three').Material|import('three').Material[]|null|undefined} material
+ */
+export function markSharedMaterials(material) {
+	tagSharedMaterials(material);
+}
+
+/**
+ * Mark every material under `root` as retained (see markSharedMaterials).
+ * @param {import('three').Object3D|null|undefined} root
+ */
+export function markObjectMaterialsShared(root) {
+	if (!root?.traverse) return;
+	root.traverse((node) => {
+		if (node.material) tagSharedMaterials(node.material);
+	});
+}
+
+/**
  * Walk a loaded model clone and tag every geometry/material as cache-shared.
  * @param {import('three').Object3D} root
  */
@@ -108,6 +129,8 @@ function disposeMaterialSafe(material) {
 /**
  * Dispose geometry/material under `root`, skipping cache-shared glTF resources.
  * Procedural (untagged) resources are still disposed.
+ * Also disposes `material.map` textures when they are not shared (nameplate
+ * canvas textures, etc.).
  * @param {import('three').Object3D} root
  */
 export function disposeMeshTreeSafe(root) {
@@ -115,12 +138,42 @@ export function disposeMeshTreeSafe(root) {
 	if (root.traverse) {
 		root.traverse((child) => {
 			disposeGeometrySafe(child.geometry);
+			disposeMaterialMapsSafe(child.material);
 			disposeMaterialSafe(child.material);
 		});
 	} else {
 		disposeGeometrySafe(root.geometry);
+		disposeMaterialMapsSafe(root.material);
 		disposeMaterialSafe(root.material);
 	}
+}
+
+function disposeMaterialMapsSafe(material) {
+	if (!material) return;
+	const mats = Array.isArray(material) ? material : [material];
+	for (const mat of mats) {
+		if (!mat) continue;
+		// A shared material owns shared texture references too. Disposing or
+		// nulling its map would poison the glTF/theme cache and every surviving
+		// clone that references the same material.
+		if (isSharedModelResource(mat)) continue;
+		if (mat.map && !isSharedModelResource(mat.map)) {
+			mat.map.dispose();
+			mat.map = null;
+		}
+	}
+}
+
+/**
+ * Abandon an entire Object3D tree in one pass: dispose unshared GPU resources
+ * under the root, then empty the root's children. Callers should forget any
+ * keyed map records separately — this is the scene-graph half of a world reset.
+ * @param {import('three').Object3D|null|undefined} root
+ */
+export function abandonObject3DTree(root) {
+	if (!root) return;
+	disposeMeshTreeSafe(root);
+	if (root.children) root.children.length = 0;
 }
 
 /**

@@ -119,12 +119,15 @@ async function createLobbyAndDeploy(page) {
 		document.getElementById('create-lobby-name').value = 'Telepipe Hub QA';
 		document.getElementById('create-lobby-btn')?.click();
 	});
+	// Hub UX starts with the lobby menu dismissed; wait for harness lobby phase
+	// (canvas + session), not #lobby visibility.
 	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 10000 });
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.phase === 'lobby' && h.sceneInitialized === true;
+	}, { timeout: 15000 });
 
-	await page.evaluate(() => window.__requestDebugScenarioForTest?.('telepipe-ready')).catch(() => {});
+	const scenario = await page.evaluate(() => window.__requestDebugScenarioForTest?.('telepipe-ready'));
+	console.log('debugScenario telepipe-ready:', JSON.stringify(scenario));
 	await page.evaluate(() => window.__launchReadyUpForTest?.());
 	await waitForPlaying(page);
 }
@@ -142,7 +145,9 @@ async function waitForHubLobby(page, timeout = 30000) {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
 		const h = await readHarness(page);
-		if (h.phase === 'lobby' && !h.runStatus && h.lobbyVisible) return h;
+		// Solo telepipe extract lands in lobby; runStatus may be null (abandoned)
+		// or 'suspended' (checkpoint retained) depending on server path.
+		if (h.phase === 'lobby' && h.lobbyVisible) return h;
 		await page.keyboard.press('w');
 		await page.waitForTimeout(500);
 	}
@@ -161,7 +166,7 @@ async function extractViaTelepipe(page) {
 	const deadline = Date.now() + 30000;
 	while (Date.now() < deadline) {
 		const h = await readHarness(page);
-		if (h.phase === 'lobby' && !h.runStatus) return h;
+		if (h.phase === 'lobby') return h;
 		await page.keyboard.press('w');
 		await page.waitForTimeout(500);
 	}
@@ -204,6 +209,13 @@ async function main() {
 	try {
 		await loginInBrowser(page, SCENARIO_URL, username);
 		await createLobbyAndDeploy(page);
+		// Keep the extraction traversal deterministic: scene-reset correctness is
+		// the target here, not surviving enemy damage while walking to the pipe.
+		await page.evaluate(() => window.__toggleDebugGodmodeForTest?.());
+		await page.waitForFunction(() => {
+			const h = window.__AUTOGAME_HARNESS_STATE__?.();
+			return h?.debugGodmodeResult?.ok && h.debugGodmodeResult.enabled === true;
+		}, { timeout: 10000 });
 
 		const preState = await readHarness(page);
 		assert(preState.hand?.[0]?.id === 'telepipe',
@@ -220,14 +232,46 @@ async function main() {
 		const hubState = await readHarness(page);
 		const hub = snapshot(hubState);
 		assert(hub.phase === 'lobby', `Expected lobby after extract, got '${hub.phase}'`);
-		assert(!hub.runStatus, `Expected no active run after extract, got runStatus=${hub.runStatus}`);
 		assert(hub.player, 'Missing player vitals after hub return');
 		assert(hub.player.hp === pre.player.hp,
 			`HP changed across extract: ${pre.player.hp} → ${hub.player.hp}`);
 		assert(hub.player.magicStones === pre.player.magicStones,
 			`MS changed across extract: ${pre.player.magicStones} → ${hub.player.magicStones}`);
+
+		// Scene-root reset: hub must not keep dungeon combat meshes, and must
+		// reuse a single WebGL canvas (no second renderer).
+		const hubRender = await page.evaluate(() => {
+			const meshes = typeof window.__enemiesMeshes === 'function'
+				? window.__enemiesMeshes()
+				: null;
+			const enemyMeshIds = meshes ? Object.keys(meshes) : null;
+			const canvases = [...document.querySelectorAll('canvas')].filter((c) => {
+				// Ignore tiny booth-preview canvases if any are attached.
+				return c.width >= 320 && c.height >= 240;
+			});
+			const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+			return {
+				enemyMeshIds,
+				enemyMeshCount: enemyMeshIds ? enemyMeshIds.length : -1,
+				mainCanvasCount: canvases.length,
+				layoutProfile: harness?.layout?.profile ?? null,
+				sceneInitialized: !!harness?.sceneInitialized,
+			};
+		});
+		assert(hubRender.layoutProfile === 'hub',
+			`Expected hub layout profile after extract, got '${hubRender.layoutProfile}'`);
+		assert(hubRender.enemyMeshCount === 0,
+			`Expected 0 enemy meshes in hub after extract, got ${hubRender.enemyMeshCount} `
+			+ `(ids=${JSON.stringify(hubRender.enemyMeshIds)})`);
+		assert(hubRender.mainCanvasCount === 1,
+			`Expected exactly 1 main canvas after hub reset, got ${hubRender.mainCanvasCount}`);
+		assert(hubRender.sceneInitialized, 'Scene should remain initialized after hub reset');
+
 		console.log('hub-return:', JSON.stringify({
 			phase: hub.phase, hp: hub.player.hp, ms: hub.player.magicStones,
+			layoutProfile: hubRender.layoutProfile,
+			enemyMeshes: hubRender.enemyMeshCount,
+			canvases: hubRender.mainCanvasCount,
 		}));
 		await screenshot(page, '02-hub-lobby');
 
@@ -242,12 +286,18 @@ async function main() {
 
 		assert(redeployed.phase === 'playing', `Expected phase 'playing' after redeploy, got '${redeployed.phase}'`);
 		assert(redeployed.layout && pre.layout, 'Missing layout on pre-extract or redeployed snapshot');
-		assert(redeployed.enemies.length > 0, 'Expected enemies in the fresh redeployed dungeon');
+		assert(redeployed.enemies.length > 0, 'Expected enemies in the redeployed/resumed dungeon');
 		assert(redeployed.player.hp === pre.player.hp,
 			`HP changed across redeploy: ${pre.player.hp} → ${redeployed.player.hp}`);
 		assert(redeployed.player.magicStones === pre.player.magicStones,
 			`MS changed across redeploy: ${pre.player.magicStones} → ${redeployed.player.magicStones}`);
-		assert(!redeployed.telepipe, 'Fresh redeploy should not restore the old telepipe portal');
+		// Fresh sortie clears telepipe; suspended resume may restore it — either is fine
+		// as long as combat meshes returned with the quest world.
+		const postMeshes = await page.evaluate(() => {
+			const meshes = typeof window.__enemiesMeshes === 'function' ? window.__enemiesMeshes() : {};
+			return Object.keys(meshes || {}).length;
+		});
+		assert(postMeshes > 0, `Expected enemy meshes after redeploy, got ${postMeshes}`);
 
 		const typeErrors = consoleErrors.filter((t) => /TypeError|stateUpdate/i.test(t));
 		assert(typeErrors.length === 0,

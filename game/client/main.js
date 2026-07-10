@@ -123,6 +123,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	resetSceneWorld,
 	syncPassageLockColliders,
 	syncPassageLockGates,
 	setGameStateRef,
@@ -766,7 +767,7 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
 	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
 	// on every lobby-phase stateUpdate.
-	if (rebuildHub && isSceneInitialized() && hubLayout) {
+	if ((rebuildHub || renderedSceneProfile !== 'hub') && isSceneInitialized() && hubLayout) {
 		renderHubScene();
 	} else {
 		setGamePhase('lobby');
@@ -965,8 +966,11 @@ function renderHubScene() {
 	if (!isSceneInitialized()) {
 		rendererInitScene(hubLayout, getSpawnPosition());
 	} else if (renderedSceneProfile !== 'hub') {
-		rebuildDungeonLayout(hubLayout);
+		// Hub ↔ quest is a hard scene-root restart (keep WebGLRenderer, new THREE.Scene).
+		resetSceneWorld(hubLayout);
 	}
+	// Already on hub: do not reseat/rebuild every extract tick — combat sync is
+	// skipped while phase is lobby / layout profile is hub.
 	renderedSceneProfile = 'hub';
 	if (gameState) {
 		gameState.layout = hubLayout;
@@ -1044,15 +1048,25 @@ function applyLobbyJoinedData(data) {
 			return;
 		}
 
-		// Scene already exists — switch geometry to the quest run when it is
-		// currently showing the hub (or the quest seed changed), then reposition.
-		if (currentLayout && (renderedSceneProfile !== 'quest' || seedChanged)) {
+		// Scene already exists — hard-reset when leaving the hub; in-place rebuild
+		// only when the quest seed changes while already in a quest world.
+		if (currentLayout && renderedSceneProfile !== 'quest') {
+			resetSceneWorld(currentLayout);
+		} else if (currentLayout && seedChanged) {
 			rebuildDungeonLayout(currentLayout);
 		}
 		renderedSceneProfile = 'quest';
 		if (gameState) gameState.layout = currentLayout;
 		if (lobbyEl) lobbyEl.classList.add('hidden');
 		setLobbyHudVisible(false);
+		uiEl.style.display = 'block';
+		showCardHand();
+		setDeckStackVisible(true);
+		initHand();
+		updateObjectiveHud();
+		updateObjectiveNavIndicator();
+		setWasDead(false);
+		setGamePhase('playing');
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);
@@ -1495,6 +1509,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	isSceneInitialized,
 	rendererInitScene,
 	rebuildDungeonLayout,
+	resetSceneWorld,
 	setPlayerRotation,
 	setWasDead,
 	rendererDisposeMeshMap,
@@ -5144,7 +5159,7 @@ function bandAtLayout(layout, x, z) {
 	return null;
 }
 function activeHarnessLayout() {
-	return (gameState?.gamePhase === 'lobby' && hubLayout && renderedSceneProfile === 'hub')
+	return (hubLayout && renderedSceneProfile === 'hub')
 		? hubLayout
 		: (currentLayout || (gameState && gameState.layout) || null);
 }

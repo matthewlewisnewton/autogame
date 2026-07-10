@@ -28,11 +28,11 @@ export function bindRunHandlers(s, ctx) {
 			return;
 		}
 		ctx.initHand();
-		// Deploying from the lobby: switch the rendered geometry from the hub to
-		// the quest run before placing the player at the run spawn, so players
-		// never deploy into the hub geometry.
+		// Deploying from the lobby: hard scene-root restart into the quest world
+		// (keep WebGLRenderer, replace THREE.Scene) so hub combat leftovers cannot
+		// linger and players never deploy into hub geometry.
 		if (ctx.currentLayout && ctx.renderedSceneProfile !== 'quest') {
-			ctx.rebuildDungeonLayout(ctx.currentLayout);
+			ctx.resetSceneWorld(ctx.currentLayout, ctx.resolveRunSpawnPosition());
 		}
 		ctx.renderedSceneProfile = 'quest';
 		if (ctx.gameState) ctx.gameState.layout = ctx.currentLayout;
@@ -43,27 +43,6 @@ export function bindRunHandlers(s, ctx) {
 		ctx.clearSuspendedRunUi();
 		ctx.setGamePhase('playing');
 		ctx.updateLevelSettingsBtnVisibility();
-
-		// Only clear entity meshes when we lack fresh server state; otherwise the animate
-		// loop will reconcile from gameState on the next stateUpdate.
-		const hasWorldEntities = ctx.gameState && (
-			(Array.isArray(ctx.gameState.enemies) && ctx.gameState.enemies.length > 0) ||
-			(Array.isArray(ctx.gameState.minions) && ctx.gameState.minions.length > 0) ||
-			(Array.isArray(ctx.gameState.loot) && ctx.gameState.loot.length > 0)
-		);
-		if (!hasWorldEntities) {
-			const sc = ctx.getScene();
-			const maps = ctx.getMeshMaps();
-			ctx.rendererDisposeMeshMap(maps.enemiesMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.enemyHealthBars, sc);
-			ctx.rendererDisposeMeshMap(maps.enemyShieldBars, sc);
-			ctx.rendererDisposeMeshMap(maps.telegraphMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.minionsMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
-			ctx.rendererDisposeMeshMap(maps.iceBallMeshes, sc);
-			ctx.disposeAllLootMeshes();
-		}
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, ctx.showRunSummary);

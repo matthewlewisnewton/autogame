@@ -111,6 +111,7 @@ export function createSocketHandlerCtx(deps) {
 		isSceneInitialized: deps.isSceneInitialized,
 		rendererInitScene: deps.rendererInitScene,
 		rebuildDungeonLayout: deps.rebuildDungeonLayout,
+		resetSceneWorld: deps.resetSceneWorld,
 		setPlayerRotation: deps.setPlayerRotation,
 		setWasDead: deps.setWasDead,
 		rendererDisposeMeshMap: deps.rendererDisposeMeshMap,
