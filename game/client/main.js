@@ -123,6 +123,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	resetSceneWorld,
 	clearWorldEntityMeshes,
 	syncPassageLockColliders,
 	syncPassageLockGates,
@@ -966,12 +967,11 @@ function renderHubScene() {
 	if (!isSceneInitialized()) {
 		rendererInitScene(hubLayout, getSpawnPosition());
 	} else if (renderedSceneProfile !== 'hub') {
-		rebuildDungeonLayout(hubLayout);
-	} else {
-		// Already on the hub geometry (e.g. repeated extract overlays) — still
-		// flush combat leftovers so dungeon enemies cannot linger in the ship.
-		clearWorldEntityMeshes();
+		// Hub ↔ quest is a hard scene-root restart (keep WebGLRenderer, new THREE.Scene).
+		resetSceneWorld(hubLayout);
 	}
+	// Already on hub: do not reseat/rebuild every extract tick — combat sync is
+	// skipped while phase is lobby / layout profile is hub.
 	renderedSceneProfile = 'hub';
 	if (gameState) {
 		gameState.layout = hubLayout;
@@ -1049,9 +1049,11 @@ function applyLobbyJoinedData(data) {
 			return;
 		}
 
-		// Scene already exists — switch geometry to the quest run when it is
-		// currently showing the hub (or the quest seed changed), then reposition.
-		if (currentLayout && (renderedSceneProfile !== 'quest' || seedChanged)) {
+		// Scene already exists — hard-reset when leaving the hub; in-place rebuild
+		// only when the quest seed changes while already in a quest world.
+		if (currentLayout && renderedSceneProfile !== 'quest') {
+			resetSceneWorld(currentLayout);
+		} else if (currentLayout && seedChanged) {
 			rebuildDungeonLayout(currentLayout);
 		}
 		renderedSceneProfile = 'quest';
@@ -1486,6 +1488,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	isSceneInitialized,
 	rendererInitScene,
 	rebuildDungeonLayout,
+	resetSceneWorld,
 	clearWorldEntityMeshes,
 	setPlayerRotation,
 	setWasDead,

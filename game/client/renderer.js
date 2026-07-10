@@ -415,20 +415,21 @@ export function disposeRenderer() {
 	// when !renderer, so they would otherwise leak on document.body.
 	for (const dn of damageNumbers) dn.element?.remove();
 	damageNumbers.length = 0;
-	// Drop combat/world entity maps so a subsequent initScene cannot keep
+	// Drop every scene-owned object/map so a subsequent initScene cannot keep
 	// references into the disposed WebGL context / previous THREE.Scene.
-	clearWorldEntityMeshes();
+	clearSceneOwnedContent();
+	scene = null;
+	setScene(null);
+	camera = null;
+	clock = null;
 	sceneInitialized = false;
 }
 
 /**
- * Tear down every combat/world entity mesh that is not part of the dungeon
- * geometry or player avatars. Hub transitions reuse the Three.js scene via
- * rebuildDungeonLayout(); without this, enemies/minions/loot/VFX from an
- * active (or just-finished) run remain parented under the hub ship interior —
- * the "lobby with dungeon enemies in the background" bug.
- *
- * Call on hub entry and full renderer dispose. Safe to call repeatedly.
+ * Dispose combat/world entity meshes (enemies, minions, loot, VFX, …).
+ * Does not touch player avatars or dungeon geometry — use clearSceneOwnedContent
+ * / resetSceneWorld for a full world restart.
+ * @deprecated Prefer resetSceneWorld() for hub↔quest transitions.
  */
 export function clearWorldEntityMeshes() {
 	const sc = scene || getScene();
@@ -468,6 +469,152 @@ export function clearWorldEntityMeshes() {
 	clearAllLockOnState();
 	lockOnToTarget = null;
 	lockOnReleaseLookAt = null;
+}
+
+/**
+ * Dispose every Object3D the renderer parents under the live scene, and empty
+ * the keyed mesh maps. Keeps the WebGLRenderer / camera / animate loop so a
+ * fresh THREE.Scene can be attached immediately (see resetSceneWorld).
+ */
+function clearSceneOwnedContent() {
+	const sc = scene || getScene();
+	clearWorldEntityMeshes();
+
+	for (const id of Object.keys(playersMeshes)) {
+		const mesh = playersMeshes[id];
+		if (sc && mesh) sc.remove(mesh);
+		if (mesh) disposeAvatar(mesh);
+		delete playersMeshes[id];
+	}
+	disposeMeshMap(playerShadows, sc);
+	for (const id of Object.keys(playerNameplates)) {
+		disposeNameplate(id);
+	}
+
+	clearPassageGateMeshes();
+	clearDungeon(sc, dungeonMeshes);
+	activePassageLocksKey = '';
+	activePassageGateLocksKey = '';
+	wallColliders = [];
+	walkableAABBs = [];
+	dungeonBounds = null;
+	activeLayout = null;
+
+	if (phaseStepAllyRing) {
+		if (sc) sc.remove(phaseStepAllyRing);
+		disposeMeshTreeSafe(phaseStepAllyRing);
+		phaseStepAllyRing = null;
+	}
+	phaseStepTargetId = null;
+}
+
+function addDefaultLights(targetScene) {
+	const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+	targetScene.add(ambientLight);
+	const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+	directionalLight.position.set(10, 20, 10);
+	targetScene.add(directionalLight);
+}
+
+/**
+ * Build dungeon geometry + colliders + atmosphere into the current `scene`.
+ * Updates spawnPosition from the layout's start room.
+ */
+function applyLayoutToScene(layout, passageLocks) {
+	if (!scene || !layout) return;
+
+	activeLayout = layout;
+	clearPassageGateMeshes();
+	clearDungeon(scene, dungeonMeshes);
+	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
+	dungeonMeshes.push(...meshes);
+	spawnPosition.x = spawn.x;
+	spawnPosition.z = spawn.z;
+	const locks = resolvePassageLocks(passageLocks);
+	activePassageLocksKey = passageLocksCacheKey(locks);
+	wallColliders = buildWallColliders(layout, locks);
+	syncPassageLockGates(locks, layout);
+	walkableAABBs = computeWalkableAABBs(layout);
+	dungeonBounds = computeDungeonBounds(layout);
+
+	if (layout.profile === 'spire-ascent') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initSpireAscentAtmosphere(layout, floorY);
+	} else if (layout.profile === 'fire-cavern') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initFireCavernAtmosphere(layout, floorY);
+	} else {
+		resetAtmosphere();
+		if (layout.profile) currentLayoutProfile = layout.profile;
+	}
+}
+
+function seatLocalPlayerAtSpawn() {
+	myX = spawnPosition.x;
+	myZ = spawnPosition.z;
+	simX = spawnPosition.x;
+	simZ = spawnPosition.z;
+	prevSimX = spawnPosition.x;
+	prevSimZ = spawnPosition.z;
+	moveAccumulator = 0;
+	resetSimVelocity();
+}
+
+function resetCameraToSpawn(layout) {
+	if (!camera) return;
+	cameraYaw = 0;
+	const followHeight = getCameraFollowHeight(layout?.profile);
+	camera.position.set(
+		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
+		followHeight,
+		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
+	);
+	const floorY = layout
+		? resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z))
+		: DEFAULT_FLOOR_Y;
+	camera.lookAt(spawnPosition.x, floorY, spawnPosition.z);
+}
+
+/**
+ * Hard world restart: abandon the current THREE.Scene root and draw a new one
+ * for `layout`, keeping the WebGLRenderer / canvas / camera / animate loop.
+ * Use this for hub ↔ quest transitions so combat leftovers cannot linger under
+ * a reused scene graph. Falls back to initScene() when no renderer exists yet.
+ *
+ * @param {object} layout
+ * @param {{x: number, z: number}} [spawnPos] - optional override before layout spawn
+ * @param {object} [passageLocks]
+ */
+export function resetSceneWorld(layout, spawnPos, passageLocks) {
+	if (!layout) return;
+	if (!renderer || !camera || !sceneInitialized) {
+		initScene(layout, spawnPos);
+		return;
+	}
+
+	clearSceneOwnedContent();
+
+	scene = new THREE.Scene();
+	setScene(scene);
+	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
+	addDefaultLights(scene);
+
+	if (spawnPos && Number.isFinite(spawnPos.x) && Number.isFinite(spawnPos.z)) {
+		spawnPosition.x = spawnPos.x;
+		spawnPosition.z = spawnPos.z;
+	} else {
+		spawnPosition.x = 0;
+		spawnPosition.z = 0;
+	}
+
+	applyLayoutToScene(layout, passageLocks);
+	seatLocalPlayerAtSpawn();
+	resetCameraToSpawn(layout);
+	sceneInitialized = true;
+}
+
+function isHubLayout(layout) {
+	return layout?.profile === 'hub';
 }
 
 // ── Layout height atmosphere (spire-ascent, fire-cavern) ──
@@ -2052,17 +2199,6 @@ export function initScene(layout, spawnPos) {
 	camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
-	cameraYaw = 0;
-	const initialFollowHeight = getCameraFollowHeight(layout?.profile);
-	camera.position.set(
-		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		initialFollowHeight,
-		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
-	);
-	const spawnFloorY = layout
-		? resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z))
-		: DEFAULT_FLOOR_Y;
-	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
 	// Renderer — low-power + no perf caveat so headless Chromium survives startup
 	renderer = new THREE.WebGLRenderer({
@@ -2075,51 +2211,15 @@ export function initScene(layout, spawnPos) {
 	renderer.domElement.style.pointerEvents = currentGamePhase === 'playing' ? 'auto' : 'none';
 	renderer.domElement.addEventListener('webglcontextlost', onWebGLContextLost, false);
 
-	// Lighting
-	const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-	scene.add(ambientLight);
-	const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-	directionalLight.position.set(10, 20, 10);
-	scene.add(directionalLight);
+	addDefaultLights(scene);
 
-	// Build dungeon geometry from server layout
+	// Build dungeon geometry from server layout (overrides spawn to start room)
 	if (layout) {
-		activeLayout = layout;
-		clearPassageGateMeshes();
-		clearDungeon(scene, dungeonMeshes);
-		const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
-		dungeonMeshes.push(...meshes);
-		spawnPosition.x = spawn.x;
-		spawnPosition.z = spawn.z;
-		const passageLocks = resolvePassageLocks();
-		activePassageLocksKey = passageLocksCacheKey(passageLocks);
-		wallColliders = buildWallColliders(layout, passageLocks);
-		syncPassageLockGates(passageLocks, layout);
-		walkableAABBs = computeWalkableAABBs(layout);
-		dungeonBounds = computeDungeonBounds(layout);
-		cameraYaw = 0;
+		applyLayoutToScene(layout);
 	}
 
-	if (layout?.profile === 'spire-ascent') {
-		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
-		initSpireAscentAtmosphere(layout, initFloorY);
-	} else if (layout?.profile === 'fire-cavern') {
-		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
-		initFireCavernAtmosphere(layout, initFloorY);
-	} else {
-		resetAtmosphere();
-		if (layout?.profile) currentLayoutProfile = layout.profile;
-	}
-
-	// Place player at spawn position
-	myX = spawnPosition.x;
-	myZ = spawnPosition.z;
-	simX = spawnPosition.x;
-	simZ = spawnPosition.z;
-	prevSimX = spawnPosition.x;
-	prevSimZ = spawnPosition.z;
-	moveAccumulator = 0;
-	resetSimVelocity();
+	seatLocalPlayerAtSpawn();
+	resetCameraToSpawn(layout);
 
 	// Reset movement when the tab loses focus (keyboard state lives in input.js).
 	if (!inputListenersAdded) {
@@ -2173,53 +2273,26 @@ export function initScene(layout, spawnPos) {
 }
 
 /**
- * Rebuild dungeon geometry from a new server layout without recreating the scene.
- * Used when the player selects a different quest in the lobby, deploys into a
- * run, or returns to the hub ship. Hub transitions also flush combat entity
- * meshes so dungeon enemies/VFX cannot linger under the reused scene.
+ * Rebuild dungeon geometry in the *current* scene without replacing the scene
+ * root. Use for same-world layout tweaks (quest seed change, passage locks).
+ * Hub ↔ quest transitions must use resetSceneWorld() instead — this helper
+ * auto-routes those so stale call sites cannot leave combat meshes behind.
  *
  * @param {object} layout - { rooms, passages } from server
+ * @param {object} [passageLocks]
  */
 export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
 
-	const enteringHub = layout.profile === 'hub';
-	if (enteringHub) {
-		clearWorldEntityMeshes();
+	const wasHub = isHubLayout(activeLayout) || currentLayoutProfile === 'hub';
+	const nowHub = isHubLayout(layout);
+	if (wasHub !== nowHub) {
+		resetSceneWorld(layout, undefined, passageLocks);
+		return;
 	}
 
-	activeLayout = layout;
-	clearPassageGateMeshes();
-	clearDungeon(scene, dungeonMeshes);
-	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
-	dungeonMeshes.push(...meshes);
-	spawnPosition.x = spawn.x;
-	spawnPosition.z = spawn.z;
-	const locks = resolvePassageLocks(passageLocks);
-	activePassageLocksKey = passageLocksCacheKey(locks);
-	wallColliders = buildWallColliders(layout, locks);
-	syncPassageLockGates(locks, layout);
-	walkableAABBs = computeWalkableAABBs(layout);
-	dungeonBounds = computeDungeonBounds(layout);
-	myX = spawnPosition.x;
-	myZ = spawnPosition.z;
-	simX = spawnPosition.x;
-	simZ = spawnPosition.z;
-	prevSimX = spawnPosition.x;
-	prevSimZ = spawnPosition.z;
-	moveAccumulator = 0;
-	resetSimVelocity();
-
-	if (layout.profile === 'spire-ascent') {
-		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
-		initSpireAscentAtmosphere(layout, floorY);
-	} else if (layout.profile === 'fire-cavern') {
-		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
-		initFireCavernAtmosphere(layout, floorY);
-	} else {
-		resetAtmosphere();
-		if (layout.profile) currentLayoutProfile = layout.profile;
-	}
+	applyLayoutToScene(layout, passageLocks);
+	seatLocalPlayerAtSpawn();
 }
 
 // ── Game phase ──
@@ -7573,9 +7646,9 @@ export function animate(timestamp) {
 		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
 		syncPhaseStepAllyHighlight(gs, myId);
 
-		// Hub / lobby (including mid-run extract) reuses the Three.js scene but
-		// must not keep reconciling dungeon combat entities from gameState —
-		// extracted players still receive a playing-phase snapshot with enemies.
+		// Hub / lobby (including mid-run extract) draws a fresh scene root via
+		// resetSceneWorld(); still skip combat reconcile so a playing-phase
+		// snapshot with enemies cannot repopulate the ship interior.
 		const syncCombatWorld = currentGamePhase === 'playing'
 			&& gs.layout?.profile !== 'hub';
 		if (syncCombatWorld) {

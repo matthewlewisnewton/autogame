@@ -28,11 +28,11 @@ export function bindRunHandlers(s, ctx) {
 			return;
 		}
 		ctx.initHand();
-		// Deploying from the lobby: switch the rendered geometry from the hub to
-		// the quest run before placing the player at the run spawn, so players
-		// never deploy into the hub geometry.
+		// Deploying from the lobby: hard scene-root restart into the quest world
+		// (keep WebGLRenderer, replace THREE.Scene) so hub combat leftovers cannot
+		// linger and players never deploy into hub geometry.
 		if (ctx.currentLayout && ctx.renderedSceneProfile !== 'quest') {
-			ctx.rebuildDungeonLayout(ctx.currentLayout);
+			ctx.resetSceneWorld(ctx.currentLayout, ctx.resolveRunSpawnPosition());
 		}
 		ctx.renderedSceneProfile = 'quest';
 		if (ctx.gameState) ctx.gameState.layout = ctx.currentLayout;
@@ -43,11 +43,6 @@ export function bindRunHandlers(s, ctx) {
 		ctx.clearSuspendedRunUi();
 		ctx.setGamePhase('playing');
 		ctx.updateLevelSettingsBtnVisibility();
-
-		// Drop any hub-era leftovers, then let animate() rebuild combat meshes
-		// from the fresh playing snapshot. Always clear — reusing meshes across
-		// runs left stale enemies visible when returning to the ship lobby.
-		ctx.clearWorldEntityMeshes();
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, ctx.showRunSummary);

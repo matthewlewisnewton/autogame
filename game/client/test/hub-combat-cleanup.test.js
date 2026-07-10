@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateHub, generateLayout } from '../../server/dungeon.js';
 
 /**
- * Regression: returning to / extracting into the hub ship reused the Three.js
- * scene via rebuildDungeonLayout() without flushing combat meshes. animate()
- * then kept reconciling gameState.enemies (still present during mid-run
- * extract), so dungeon enemies appeared behind the lobby interior.
+ * Hub ↔ quest transitions must replace the THREE.Scene root (keep WebGLRenderer)
+ * so combat leftovers cannot linger under a reused scene graph. Mid-run extract
+ * still receives a playing snapshot with enemies — animate() must not redraw them
+ * into the ship interior.
  */
-describe('hub combat world cleanup', () => {
+describe('hub scene world reset', () => {
 	let rafCallbacks;
 
 	beforeEach(() => {
@@ -29,16 +29,17 @@ describe('hub combat world cleanup', () => {
 		return { x: start.x, z: start.z };
 	}
 
-	it('rebuildDungeonLayout to hub disposes enemy meshes left from a quest run', async () => {
+	it('resetSceneWorld replaces the scene root and drops quest enemy meshes', async () => {
 		const hubLayout = generateHub(0);
 		const questLayout = generateLayout(42, 'default');
 		const {
 			initScene,
-			rebuildDungeonLayout,
+			resetSceneWorld,
 			setGameStateRef,
 			setMyId,
 			setGamePhase,
 			getMeshMaps,
+			getScene,
 			animate,
 		} = await import('../renderer.js');
 
@@ -58,11 +59,53 @@ describe('hub combat world cleanup', () => {
 		});
 		animate(0);
 		expect(getMeshMaps().enemiesMeshes.e1).toBeTruthy();
+		const questScene = getScene();
+		expect(questScene).toBeTruthy();
+		const canvasCountBefore = document.querySelectorAll('canvas').length;
 
-		// Mid-run extract / return-to-lobby: geometry swaps to hub while the
-		// playing snapshot may still list enemies.
-		rebuildDungeonLayout(hubLayout);
+		resetSceneWorld(hubLayout);
+		expect(getScene()).not.toBe(questScene);
 		expect(getMeshMaps().enemiesMeshes.e1).toBeUndefined();
+		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
+		expect(Object.keys(getMeshMaps().playersMeshes)).toHaveLength(0);
+		// WebGLRenderer / canvas reused — no second canvas.
+		expect(document.querySelectorAll('canvas').length).toBe(canvasCountBefore);
+	});
+
+	it('rebuildDungeonLayout auto-routes hub↔quest through resetSceneWorld', async () => {
+		const hubLayout = generateHub(0);
+		const questLayout = generateLayout(42, 'default');
+		const {
+			initScene,
+			rebuildDungeonLayout,
+			setGameStateRef,
+			setMyId,
+			setGamePhase,
+			getMeshMaps,
+			getScene,
+			animate,
+		} = await import('../renderer.js');
+
+		setGamePhase('playing');
+		initScene(questLayout, { x: 0, z: 0 });
+		setMyId('p1');
+		const questSpawn = startCenter(questLayout);
+		setGameStateRef({
+			gamePhase: 'playing',
+			layout: questLayout,
+			players: { p1: { x: questSpawn.x, z: questSpawn.z, hp: 100, dead: false } },
+			loot: [],
+			enemies: [
+				{ id: 'e2', type: 'grunt', x: questSpawn.x + 1, z: questSpawn.z, hp: 30, maxHp: 30 },
+			],
+			minions: [],
+		});
+		animate(0);
+		const questScene = getScene();
+		expect(getMeshMaps().enemiesMeshes.e2).toBeTruthy();
+
+		rebuildDungeonLayout(hubLayout);
+		expect(getScene()).not.toBe(questScene);
 		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
 	});
 
@@ -75,7 +118,6 @@ describe('hub combat world cleanup', () => {
 			setGamePhase,
 			getMeshMaps,
 			animate,
-			clearWorldEntityMeshes,
 		} = await import('../renderer.js');
 
 		setGamePhase('lobby');
@@ -83,8 +125,6 @@ describe('hub combat world cleanup', () => {
 		setMyId('p1');
 		const hubSpawn = startCenter(hubLayout);
 
-		// Extracted player still receives a playing-world snapshot with enemies,
-		// but the renderer is showing the hub under lobby phase.
 		setGameStateRef({
 			gamePhase: 'playing',
 			layout: hubLayout,
@@ -106,21 +146,12 @@ describe('hub combat world cleanup', () => {
 			],
 			telepipe: { x: hubSpawn.x + 1, z: hubSpawn.z + 1 },
 		});
-		clearWorldEntityMeshes();
 		animate(0);
 		animate(16);
 
 		expect(getMeshMaps().enemiesMeshes.e_stale).toBeUndefined();
 		expect(getMeshMaps().minionsMeshes.m1).toBeUndefined();
 		expect(getMeshMaps().lootMeshes.l1).toBeUndefined();
-		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
-	});
-
-	it('clearWorldEntityMeshes is idempotent and safe with an empty scene', async () => {
-		const { initScene, clearWorldEntityMeshes, getMeshMaps } = await import('../renderer.js');
-		initScene(null, { x: 0, z: 0 });
-		expect(() => clearWorldEntityMeshes()).not.toThrow();
-		expect(() => clearWorldEntityMeshes()).not.toThrow();
 		expect(Object.keys(getMeshMaps().enemiesMeshes)).toHaveLength(0);
 	});
 });
