@@ -109,4 +109,26 @@ describe('defer quest layout swap + spawn teleport to deploy', () => {
 
 		socket.disconnect();
 	});
+
+	it('sends the generated preview only to the selecting player', async () => {
+		users.createUser('preview_selector', 'testpass');
+		users.createUser('preview_observer', 'testpass');
+		const selectorId = users.findUserByUsername('preview_selector').accountId;
+		const observerId = users.findUserByUsername('preview_observer').accountId;
+		const selector = await connectClient(baseUrl, selectorId, { name: 'Preview Room' });
+		const observer = await connectClient(baseUrl, observerId, { joinLobbyId: selector.lobbyId });
+
+		const selectorUpdate = waitForQuestSelection(selector.socket, SELECTED_QUEST_ID);
+		const observerUpdate = waitForQuestSelection(observer.socket, SELECTED_QUEST_ID);
+		selector.socket.emit('selectQuest', { questId: SELECTED_QUEST_ID, tier: TIER_1 });
+
+		const [selected, observed] = await Promise.all([selectorUpdate, observerUpdate]);
+		expect(selected.layout).toBeTruthy();
+		expect(selected.layoutSeed).toBe(questLayoutSeed(SELECTED_QUEST_ID, TIER_1));
+		expect(observed.layout).toBeUndefined();
+		expect(observed.layoutSeed).toBeUndefined();
+
+		selector.socket.disconnect();
+		observer.socket.disconnect();
+	});
 });

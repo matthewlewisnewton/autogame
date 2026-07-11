@@ -31,8 +31,9 @@ const {
   unlockHatForPlayer,
   chargeAppearanceChangeForPlayer,
   healAtMedic,
-  stateSnapshot,
+  emitLobbyHotState,
   savePlayerData,
+  savePlayerSnapshot,
   abandonSuspendedRun,
 } = require('../progression');
 const { listGlobalLobbySummaries } = require('../lobbyBrowser');
@@ -63,6 +64,7 @@ function register(socket, ctx) {
     lobbyBrowserRoom,
     syncLivePlayerCosmetic,
     validateSocketSession,
+    loadSavedPlayerData,
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
@@ -78,60 +80,66 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
-    return lobbies.withMembershipLock(async () => {
-      if (!socket.connected) return;
-      if (lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobby = lobbies.createLobby(data && data.name);
-      withLobbyContext(lobby, () => {
-        applyLayoutForQuest(
-          lobby.state,
-          lobby.state.selectedQuestId,
-          lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-        );
-        ensureShopOffer();
+    // Load persistence outside the global membership lock so one slow read
+    // cannot block every join/leave/create on the instance.
+    return Promise.resolve(loadSavedPlayerData(playerId)).then((savedData) => {
+      return lobbies.withMembershipLock(async () => {
+        if (!socket.connected) return;
+        if (lobbies.getLobbyForPlayer(playerId)) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
+          return;
+        }
+        const lobby = lobbies.createLobby(data && data.name);
+        withLobbyContext(lobby, () => {
+          applyLayoutForQuest(
+            lobby.state,
+            lobby.state.selectedQuestId,
+            lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+          );
+          ensureShopOffer();
+        });
+        try {
+          const joined = await joinPlayerToLobby(socket, lobby, { savedData });
+          if (!joined) lobbies.deleteLobbyIfEmpty(lobby.id);
+        } catch (err) {
+          lobbies.deleteLobbyIfEmpty(lobby.id);
+          throw err;
+        }
       });
-      try {
-        const joined = await joinPlayerToLobby(socket, lobby);
-        if (!joined) lobbies.deleteLobbyIfEmpty(lobby.id);
-      } catch (err) {
-        lobbies.deleteLobbyIfEmpty(lobby.id);
-        throw err;
-      }
     });
   });
 
   socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
-    return lobbies.withMembershipLock(async () => {
-      if (!socket.connected) return;
-      const existingLobby = lobbies.getLobbyForPlayer(playerId);
-      if (existingLobby) {
-        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-        const player = existingLobby.state.players[playerId];
-        if (player && player.connected === false && lobbyId === existingLobby.id) {
-          await reconnectPlayerToLobby(socket, existingLobby);
+    return Promise.resolve(loadSavedPlayerData(playerId)).then((savedData) => {
+      return lobbies.withMembershipLock(async () => {
+        if (!socket.connected) return;
+        const existingLobby = lobbies.getLobbyForPlayer(playerId);
+        if (existingLobby) {
+          const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+          const player = existingLobby.state.players[playerId];
+          if (player && player.connected === false && lobbyId === existingLobby.id) {
+            await reconnectPlayerToLobby(socket, existingLobby);
+            return;
+          }
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
           return;
         }
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-      if (!lobbyId) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
-        return;
-      }
-      const lobby = lobbies.getLobbyById(lobbyId);
-      if (!lobby) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
-        return;
-      }
-      if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
-        return;
-      }
-      await joinLobbyWithPhasePolicy(socket, lobby);
+        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+        if (!lobbyId) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
+          return;
+        }
+        const lobby = lobbies.getLobbyById(lobbyId);
+        if (!lobby) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
+          return;
+        }
+        if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
+          return;
+        }
+        await joinLobbyWithPhasePolicy(socket, lobby, { savedData });
+      });
     });
   });
 
@@ -196,10 +204,11 @@ function register(socket, ctx) {
     // same seed the run will use.
     const { layoutSeed, layout } = previewLayoutForQuest(questId, tier);
     emitQuestPayloadToLobby(lobby, {
-      extraFields: {
-        layoutSeed,
-        layout,
-      },
+      // The generated preview is only needed by the selecting client. Other
+      // members receive the lightweight quest selection update.
+      extraFields: (targetSocket) => targetSocket.id === socket.id
+        ? { layoutSeed, layout }
+        : {},
     });
     broadcastLobbyUpdate(lobby);
     });
@@ -211,58 +220,61 @@ function register(socket, ctx) {
   runHandlers.register(socket, ctx);
 
   socket.on(CLIENT_TO_SERVER.UNLOCK_HAT, (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, async (state, lobby, player) => {
-    const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
-    if (!hatId) {
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Missing hatId' });
-      return;
-    }
-
-    // Reject early if the account already owns the hat — no currency change.
-    const account = findUserByAccountId(player.accountId);
-    if (!account) {
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Account not found' });
-      return;
-    }
-    const owned = backfillUnlockedHats(account.unlockedHats);
-    if (owned.includes(hatId)) {
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Hat already unlocked' });
-      return;
-    }
-
-    // Deduct currency (validates the hat exists and affordability).
-    const result = unlockHatForPlayer(player, hatId);
-    if (!result.ok) {
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: result.reason });
-      return;
-    }
-
-    // Persist deducted currency before recording the hat on the account.
-    // Safe ordering: currency first, hat second — a crash after this save but
-    // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
-    // instead of unlocked-but-not-charged (free-hat exploit).
-    const saved = await savePlayerData(socket.playerId);
-    if (!saved) {
-      player.currency += result.cost;
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to save progress' });
-      return;
-    }
-
-    const unlockResult = await unlockHatForAccount(player.accountId, hatId);
-    if (!unlockResult.ok) {
-      // Refund in memory and re-save so disk matches RAM; otherwise the first
-      // save would leave deducted currency on disk without a hat unlock.
-      player.currency += result.cost;
-      await savePlayerData(socket.playerId);
-      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: unlockResult.reason });
-      return;
-    }
-
-    socket.emit(SERVER_TO_CLIENT.HAT_UNLOCKED, {
-      unlockedHats: unlockResult.unlockedHats,
-      currency: player.currency
+    let operation = null;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+      const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
+      if (!hatId) {
+        socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Missing hatId' });
+        return;
+      }
+      const account = findUserByAccountId(player.accountId);
+      if (!account) {
+        socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Account not found' });
+        return;
+      }
+      if (backfillUnlockedHats(account.unlockedHats).includes(hatId)) {
+        socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Hat already unlocked' });
+        return;
+      }
+      const result = unlockHatForPlayer(player, hatId);
+      if (!result.ok) {
+        socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: result.reason });
+        return;
+      }
+      operation = { lobby, player, accountId: player.accountId, hatId, cost: result.cost };
     });
-    void savePlayerData(socket.playerId);
+
+    if (!operation) return;
+    void (async () => {
+      const saved = await savePlayerSnapshot(socket.playerId, operation.player);
+      if (!saved) {
+        withLobbyContext(operation.lobby, () => {
+          operation.player.currency += operation.cost;
+          socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to save progress' });
+        });
+        return;
+      }
+
+      const unlockResult = await unlockHatForAccount(operation.accountId, operation.hatId);
+      if (!unlockResult.ok) {
+        withLobbyContext(operation.lobby, () => {
+          operation.player.currency += operation.cost;
+        });
+        await savePlayerSnapshot(socket.playerId, operation.player);
+        socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: unlockResult.reason });
+        return;
+      }
+
+      withLobbyContext(operation.lobby, () => {
+        socket.emit(SERVER_TO_CLIENT.HAT_UNLOCKED, {
+          unlockedHats: unlockResult.unlockedHats,
+          currency: operation.player.currency,
+        });
+      });
+      void savePlayerSnapshot(socket.playerId, operation.player);
+    })().catch((err) => {
+      console.error('[hat] unlock failed:', err);
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to unlock hat' });
     });
   });
 
@@ -278,30 +290,30 @@ function register(socket, ctx) {
       return;
     }
 
-    withLobbyContext(lobby, async () => {
+    const operation = withLobbyContext(lobby, () => {
       const proposed = data && data.cosmetic;
       if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) {
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Invalid cosmetic' });
-        return;
+        return null;
       }
 
       const account = findUserByAccountId(player.accountId);
       if (!account) {
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Account not found' });
-        return;
+        return null;
       }
 
       const validation = validateCosmetic(proposed);
       if (!validation.ok) {
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: validation.reason });
-        return;
+        return null;
       }
 
       if (validation.value.hat !== undefined) {
         const unlocked = backfillUnlockedHats(account.unlockedHats);
         if (!unlocked.includes(validation.value.hat)) {
           socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Hat is not unlocked for this account' });
-          return;
+          return null;
         }
       }
 
@@ -312,53 +324,65 @@ function register(socket, ctx) {
         : { ...base, ...value };
       const paidChange = hasAppearanceFieldChanges(base, merged);
 
-      const finishSuccess = (cost) => {
-        const user = findUserByAccountId(player.accountId);
-        syncLivePlayerCosmetic(player.accountId, user.cosmetic);
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-        socket.emit(SERVER_TO_CLIENT.APPEARANCE_CHANGED, {
-          cosmetic: user.cosmetic,
-          currency: player.currency,
-          cost,
-        });
-        void savePlayerData(socket.playerId);
-      };
-
       if (!paidChange) {
-        const profileResult = await updateProfile(player.accountId, { cosmetic: proposed });
-        if (!profileResult.ok) {
-          socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
-          return;
-        }
-        finishSuccess(0);
-        return;
+        return { accountId: player.accountId, player, proposed, cost: 0 };
       }
 
       const chargeResult = chargeAppearanceChangeForPlayer(player);
       if (!chargeResult.ok) {
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: chargeResult.reason });
-        return;
+        return null;
       }
 
-      // Safe ordering: currency first, cosmetic second — a crash after this save
-      // but before updateProfile leaves charged-but-not-applied (retryable) instead
-      // of applied-but-not-charged (free-appearance exploit).
-      const saved = await savePlayerData(socket.playerId);
-      if (!saved) {
-        player.currency += chargeResult.cost;
-        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to save progress' });
-        return;
+      return {
+        accountId: player.accountId,
+        player,
+        proposed,
+        cost: chargeResult.cost,
+      };
+    });
+
+    if (!operation) return;
+    void (async () => {
+      // Storage work runs outside withLobbyContext. The captured player object
+      // remains authoritative for this lobby and avoids module-global state.
+      if (operation.cost > 0) {
+        const saved = await savePlayerSnapshot(socket.playerId, operation.player);
+        if (!saved) {
+          withLobbyContext(lobby, () => {
+            operation.player.currency += operation.cost;
+            socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to save progress' });
+          });
+          return;
+        }
       }
 
-      const profileResult = await updateProfile(player.accountId, { cosmetic: proposed });
+      const profileResult = await updateProfile(operation.accountId, { cosmetic: operation.proposed });
       if (!profileResult.ok) {
-        player.currency += chargeResult.cost;
-        await savePlayerData(socket.playerId);
+        if (operation.cost > 0) {
+          withLobbyContext(lobby, () => {
+            operation.player.currency += operation.cost;
+          });
+          await savePlayerSnapshot(socket.playerId, operation.player);
+        }
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
         return;
       }
 
-      finishSuccess(chargeResult.cost);
+      withLobbyContext(lobby, () => {
+        const user = findUserByAccountId(operation.accountId);
+        syncLivePlayerCosmetic(operation.accountId, user.cosmetic);
+        emitLobbyHotState(lobby.id);
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_CHANGED, {
+          cosmetic: user.cosmetic,
+          currency: operation.player.currency,
+          cost: operation.cost,
+        });
+      });
+      void savePlayerSnapshot(socket.playerId, operation.player);
+    })().catch((err) => {
+      console.error('[appearance] update failed:', err);
+      socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to update appearance' });
     });
   });
 
@@ -378,7 +402,7 @@ function register(socket, ctx) {
         currency: player.currency,
         cost: result.cost,
       });
-      io.to(state._lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyHotState(state._lobbyId);
     });
   });
 

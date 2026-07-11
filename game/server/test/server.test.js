@@ -106,6 +106,8 @@ import {
 	isPlayerCombatExhausted,
 	validateUseCardHand,
 	stateSnapshot,
+	publicStateSnapshot,
+	personalizedStateSnapshot,
 	hotStateSnapshot,
 	addMagicStones,
 	restoreCardCharges,
@@ -118,6 +120,7 @@ import {
 	DEFAULT_QUEST_ID,
 	io as serverIo,
 	STALE_THRESHOLD,
+	DISCONNECT_GRACE_MS,
 	MAX_MAGIC_STONES,
 	STARTING_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
@@ -2128,13 +2131,14 @@ describe('cleanupStalePlayers', () => {
 		vi.useRealTimers();
 	});
 
-	it('stale threshold constant is 10 seconds', () => {
-		expect(STALE_THRESHOLD).toBe(10000);
+	it('stale threshold constant matches disconnect grace (60 seconds)', () => {
+		expect(STALE_THRESHOLD).toBe(60000);
+		expect(STALE_THRESHOLD).toBe(DISCONNECT_GRACE_MS);
 	});
 
 	it('removes multiple stale players', () => {
-		addPlayer('p1', { lastActivity: Date.now() - 20000 });
-		addPlayer('p2', { lastActivity: Date.now() - 15000 });
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 20000 });
+		addPlayer('p2', { lastActivity: Date.now() - STALE_THRESHOLD - 15000 });
 		addPlayer('p3', { lastActivity: Date.now() });
 
 		cleanupStalePlayers();
@@ -2201,8 +2205,8 @@ describe('cleanupStalePlayers', () => {
 		};
 		setTestProvider(mockProvider);
 
-		addPlayer('p1', { lastActivity: Date.now() - 20000, currency: 10 });
-		addPlayer('p2', { lastActivity: Date.now() - 15000, currency: 20 });
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 20000, currency: 10 });
+		addPlayer('p2', { lastActivity: Date.now() - STALE_THRESHOLD - 15000, currency: 20 });
 
 		cleanupStalePlayers();
 
@@ -2215,16 +2219,15 @@ describe('cleanupStalePlayers', () => {
 		setTestProvider(null);
 	});
 
-	it('disconnects socket by matching socket.playerId (not socket.id)', () => {
+	it('keeps connected-but-idle players (backgrounded tabs) instead of hard-removing', () => {
 		const disconnectCalled = [];
 		const mockSocket = {
-			id: 'random-socket-id-abc123',  // Socket.IO socket.id ≠ playerId
+			id: 'random-socket-id-abc123',
 			playerId: 'p1',
 			connected: true,
 			disconnect: () => disconnectCalled.push(true)
 		};
 
-		// Replace io.sockets.sockets with a map containing our mock socket
 		const originalSockets = serverIo.sockets.sockets;
 		const mockMap = new Map();
 		mockMap.set(mockSocket.id, mockSocket);
@@ -2235,10 +2238,9 @@ describe('cleanupStalePlayers', () => {
 
 		cleanupStalePlayers();
 
-		expect(disconnectCalled).toHaveLength(1);
-		expect(gameState.players['p1']).toBeUndefined();
+		expect(disconnectCalled).toHaveLength(0);
+		expect(gameState.players['p1']).toBeDefined();
 
-		// Restore original sockets
 		unregisterPlayerSocket('p1', mockSocket);
 		serverIo.sockets.sockets = originalSockets;
 	});
@@ -4241,9 +4243,9 @@ describe('run state', () => {
 			vi.useRealTimers();
 		});
 
-		it('throws when called outside lobby context', async () => {
+		it('throws when called outside lobby context', () => {
 			delete gameState._lobbyId;
-			await expect(returnPlayersToLobby()).rejects.toThrow('returnPlayersToLobby requires lobby context');
+			expect(() => returnPlayersToLobby()).toThrow('returnPlayersToLobby requires lobby context');
 		});
 
 		it('resets gamePhase to lobby', async () => {
@@ -5938,6 +5940,70 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 	});
 });
 
+describe('privacy-safe network snapshots', () => {
+	beforeEach(() => {
+		resetState();
+		addPlayer('p1', {
+			deck: ['iron_sword'],
+			hand: [{ id: 'iron_sword' }],
+			inventory: createInventoryFromOwnedCards({ iron_sword: 1 }),
+			selectedDeck: ['p1-card'],
+			ownedCards: { iron_sword: 1 },
+		});
+		addPlayer('p2', {
+			deck: ['flame_blade'],
+			hand: [{ id: 'flame_blade' }],
+			inventory: createInventoryFromOwnedCards({ flame_blade: 1 }),
+			selectedDeck: ['p2-card'],
+			ownedCards: { flame_blade: 1 },
+		});
+	});
+
+	it('keeps all cold fields out of a room-wide snapshot', () => {
+		const snapshot = publicStateSnapshot();
+		for (const player of Object.values(snapshot.players)) {
+			expect(player.hand).toBeUndefined();
+			expect(player.deck).toBeUndefined();
+			expect(player.inventory).toBeUndefined();
+			expect(player.selectedDeck).toBeUndefined();
+			expect(player.ownedCards).toBeUndefined();
+		}
+	});
+
+	it('includes cold fields only for the joining player', () => {
+		const snapshot = personalizedStateSnapshot('p1');
+		expect(snapshot.players.p1.hand).toEqual([{ id: 'iron_sword' }]);
+		expect(snapshot.players.p1.inventory).toBeDefined();
+		expect(snapshot.players.p2.hand).toBeUndefined();
+		expect(snapshot.players.p2.deck).toBeUndefined();
+		expect(snapshot.players.p2.inventory).toBeUndefined();
+	});
+
+	it('serializes a cleared run as explicit null', () => {
+		delete gameState.run;
+		expect(publicStateSnapshot().run).toBeNull();
+	});
+
+	it('preserves enemy status-effect fields in hot snapshots', () => {
+		gameState.enemies = [{
+			id: 'status-enemy',
+			type: 'grunt',
+			x: 0,
+			y: 0.5,
+			z: 0,
+			hp: 20,
+			slowedUntil: 1234,
+			slowFactor: 0.4,
+			burningUntil: 5678,
+		}];
+		expect(hotStateSnapshot().enemies[0]).toEqual(expect.objectContaining({
+			slowedUntil: 1234,
+			slowFactor: 0.4,
+			burningUntil: 5678,
+		}));
+	});
+});
+
 describe('hotStateSnapshot() — slim per-tick payload', () => {
 	const COLD_PLAYER_FIELDS = [
 		'deck',
@@ -6017,16 +6083,25 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		for (const field of COLD_PLAYER_FIELDS) {
 			expect(p[field]).toBeUndefined();
 		}
-		expect(snapshot.enemies).toEqual(gameState.enemies);
-		expect(snapshot.minions).toEqual(gameState.minions);
+		expect(snapshot.enemies).toHaveLength(1);
+		expect(snapshot.enemies[0]).toEqual(expect.objectContaining({
+			id: 'e1', x: 5, z: 5, hp: 50,
+		}));
+		// Internal AI fields must not ship on the hot tick.
+		expect(snapshot.enemies[0].wanderTarget).toBeUndefined();
+		expect(snapshot.minions).toHaveLength(1);
+		expect(snapshot.minions[0]).toEqual(expect.objectContaining({
+			id: 'm1', x: 0, z: 0, hp: 50, ttl: 30, ownerId: 'p1',
+		}));
 		expect(snapshot.loot).toEqual(gameState.loot);
 		expect(snapshot.gamePhase).toBe('playing');
-		expect(snapshot.run).toEqual(gameState.run);
+		expect(snapshot.run).toEqual(expect.objectContaining({ id: 'run-1', status: 'playing' }));
 		expect(snapshot.layoutSeed).toBe(42);
 		expect(snapshot.lobby).toEqual([]);
-		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
-		expect(snapshot).toHaveProperty('shopOffer');
-		expect(snapshot.suspendedRunSummary).toBeNull();
+		// Slow catalogs omitted from hot ticks (client merges from cold/join).
+		expect(snapshot.dungeonBounds).toBeUndefined();
+		expect(snapshot.shopOffer).toBeUndefined();
+		expect(snapshot.suspendedRunSummary).toBeUndefined();
 	});
 
 	it('full stateSnapshot still includes cold fields', () => {

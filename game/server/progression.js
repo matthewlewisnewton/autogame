@@ -162,19 +162,56 @@ function getIoTarget() {
   const io = _getIo();
   if (!io) return null;
   const { getLobbyById, _lobbies } = require('./lobbies');
+  let room = null;
   if (_gameState && _gameState._lobbyId && typeof io.to === 'function') {
     if (getLobbyById(_gameState._lobbyId)) {
-      return io.to(_gameState._lobbyId);
+      room = io.to(_gameState._lobbyId);
     }
   }
-  if (_gameState && _lobbies) {
+  if (!room && _gameState && _lobbies && typeof io.to === 'function') {
     for (const lobby of _lobbies.values()) {
       if (lobby.state === _gameState) {
-        return io.to(lobby.id);
+        room = io.to(lobby.id);
+        break;
       }
     }
   }
-  return io;
+  if (!room) return io;
+  const redisAdapterActive = !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+  if (redisAdapterActive && room.local && typeof room.local.emit === 'function') {
+    return room.local;
+  }
+  return room;
+}
+
+/**
+ * Emit a lobby-scoped event. When the Redis adapter is attached, prefer
+ * local-only delivery so lobby rooms (single-instance by fly affinity) do not
+ * pub/sub every tick/action to every other machine.
+ */
+function emitToLobbyRoom(lobbyId, event, payload, { volatile = false } = {}) {
+  const io = _getIo();
+  if (!io) return;
+  let room = lobbyId && typeof io.to === 'function' ? io.to(lobbyId) : getIoTarget();
+  if (!room || typeof room.emit !== 'function') return;
+  const redisAdapterActive = !!(io.of && io.of('/')?.adapter?.constructor?.name === 'RedisAdapter')
+    || !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+  if (redisAdapterActive && room.local && typeof room.local.emit === 'function') {
+    room = room.local;
+  }
+  const target = volatile && room.volatile && typeof room.volatile.emit === 'function'
+    ? room.volatile
+    : room;
+  target.emit(event, payload);
+}
+
+/**
+ * Hot room broadcast after an action. Optionally push a private deck/hand
+ * update to the acting player so cold inventory never fans out to the room.
+ */
+function emitLobbyHotState(lobbyId, { playerId = null, volatile = false } = {}) {
+  emitToLobbyRoom(lobbyId, SERVER_TO_CLIENT.STATE_UPDATE, hotStateSnapshot(), { volatile });
+  if (playerId) emitPlayerDeckUpdate(playerId);
 }
 
 function buildPlayerDeckUpdatePayload(player, extra = {}) {
@@ -186,6 +223,11 @@ function buildPlayerDeckUpdatePayload(player, extra = {}) {
     desperationDeck: Array.isArray(player.desperationDeck) ? [...player.desperationDeck] : [],
     inDesperation: !!player.inDesperation,
     nextDrawAt: player.nextDrawAt ?? null,
+    selectedDeck: Array.isArray(player.selectedDeck) ? [...player.selectedDeck] : [],
+    inventory: Array.isArray(player.inventory)
+      ? player.inventory.map((card) => ({ ...card }))
+      : [],
+    ownedCards: player.ownedCards ? { ...player.ownedCards } : {},
     ...extra,
   };
   if (player.runRewards != null) {
@@ -201,7 +243,7 @@ function buildPlayerDeckUpdatePayload(player, extra = {}) {
 }
 
 function emitPlayerDeckUpdate(playerId, extra = {}) {
-  if (!_gameState || !isPlayingPhase(_gameState)) return;
+  if (!_gameState) return;
   const player = _gameState.players[playerId];
   if (!player) return;
   const socketId = player.activeSocketId;
@@ -209,6 +251,17 @@ function emitPlayerDeckUpdate(playerId, extra = {}) {
   const io = _getIo();
   if (!io || typeof io.to !== 'function') return;
   io.to(socketId).emit(SERVER_TO_CLIENT.DECK_UPDATE, buildPlayerDeckUpdatePayload(player, extra));
+}
+
+/**
+ * Room-wide snapshots contain only public player fields. Each socket receives
+ * its own hand/deck/inventory through a targeted deckUpdate.
+ */
+function emitLobbyStateWithPrivatePlayerUpdates(lobbyId = _gameState?._lobbyId) {
+  emitToLobbyRoom(lobbyId, SERVER_TO_CLIENT.STATE_UPDATE, publicStateSnapshot());
+  for (const playerId of Object.keys(_gameState.players || {})) {
+    emitPlayerDeckUpdate(playerId);
+  }
 }
 
 function maybeEmitPlayerDeckUpdate(player) {
@@ -987,11 +1040,15 @@ function persistenceKey(playerId) {
 }
 
 async function savePlayerData(playerId) {
-  if (!provider) return true;
   const player = _gameState.players[playerId];
   if (!player) return true;
+  return savePlayerSnapshot(playerId, player);
+}
+
+async function savePlayerSnapshot(playerId, player) {
+  if (!provider || !player) return true;
   try {
-    const key = persistenceKey(playerId);
+    const key = player.accountId || playerId;
     await provider.savePlayer(key, extractPersistentData(player));
     player.persistenceLastSavedAt = Date.now();
     return true;
@@ -1009,6 +1066,26 @@ async function saveAllPlayers() {
       console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);
     }
   }
+}
+
+function saveAllPlayersSnapshot() {
+  if (!provider) return Promise.resolve([]);
+  const saves = Object.entries(_gameState.players || {}).map(([playerId, player]) => ({
+    playerId,
+    player,
+    key: player.accountId || playerId,
+    data: extractPersistentData(player),
+  }));
+  return Promise.all(saves.map(async ({ playerId, player, key, data }) => {
+    try {
+      await provider.savePlayer(key, data);
+      player.persistenceLastSavedAt = Date.now();
+      return true;
+    } catch (err) {
+      console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+      return false;
+    }
+  }));
 }
 
 function createRunState() {
@@ -2743,11 +2820,11 @@ function processQuestWaveCleared(gameState = _gameState) {
   fireWaveClearedTriggers(gameState, buildQuestScriptSpawnCtx(gameState));
 }
 
-async function cleanupAfterDamage() {
+function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
     processQuestWaveCleared();
     try {
-      await checkRunTerminalState();
+      checkRunTerminalState();
     } catch (err) {
       console.error('[run] checkRunTerminalState failed:', err && err.stack ? err.stack : err);
     }
@@ -3355,7 +3432,7 @@ function restoreCardCheckpoint() {
 
   const io = getIoTarget();
   emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
-  emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitLobbyStateWithPrivatePlayerUpdates(_gameState._lobbyId);
 }
 
 function isTerminalRunStatus(status) {
@@ -3413,7 +3490,7 @@ function suspendRunToLobby() {
   const io = getIoTarget();
   if (io) {
     io.emit(SERVER_TO_CLIENT.RUN_SUSPENDED, suspendedRunSummary);
-    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    emitLobbyStateWithPrivatePlayerUpdates(_gameState._lobbyId);
   }
   _broadcastLobbyUpdate();
 }
@@ -3443,10 +3520,10 @@ function abandonSuspendedRun(state = _gameState) {
     const lobbyId = state._lobbyId;
     if (lobbyId) {
       io.to(lobbyId).emit(SERVER_TO_CLIENT.RUN_ABANDONED);
-      io.to(lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyStateWithPrivatePlayerUpdates(lobbyId);
     } else {
       io.emit(SERVER_TO_CLIENT.RUN_ABANDONED);
-      io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyStateWithPrivatePlayerUpdates();
     }
   }
   _broadcastLobbyUpdate();
@@ -3494,7 +3571,7 @@ function tryEnterTelepipe(playerId) {
   const io = getIoTarget();
   if (io) {
     io.emit(SERVER_TO_CLIENT.PLAYER_EXTRACTED, { playerId });
-    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    emitLobbyHotState(_gameState._lobbyId);
   }
 
   maybeSuspendRun();
@@ -3541,7 +3618,7 @@ function tickCombatExhaustionGrace(now = Date.now()) {
   }
 }
 
-async function checkRunTerminalState() {
+function checkRunTerminalState() {
   const run = _gameState.run;
   if (!run || run.status !== 'playing') return;
 
@@ -3612,26 +3689,34 @@ async function checkRunTerminalState() {
   // cannot expose victory/failed before the client receives the summary event.
   _gameState.run.status = status;
 
-  // Persist quest-tier unlocks after runComplete/runFailed so async provider
-  // writes cannot yield and swap lobby context before rewards are granted.
+  // Capture identities while the lobby context is active, then persist account
+  // progression after this synchronous transition returns. No continuation may
+  // read module-global lobby state.
+  const accountIds = Object.values(_gameState.players)
+    .map((player) => player?.accountId)
+    .filter(Boolean);
+  ensureTerminalRunStaysInDungeon(_gameState);
+
   if (status === 'victory' && runQuestTier === 1 && runQuestId) {
-    for (const player of Object.values(_gameState.players)) {
-      if (player && player.accountId) {
-        await unlockQuestTier(player.accountId, runQuestId, 2);
-        await completeQuestTier(player.accountId, runQuestId, 1);
+    void (async () => {
+      for (const accountId of accountIds) {
+        await unlockQuestTier(accountId, runQuestId, 2);
+        await completeQuestTier(accountId, runQuestId, 1);
       }
-    }
+    })().catch((err) => {
+      console.error('[run] quest tier persistence failed:', err && err.stack ? err.stack : err);
+    });
   }
 
   if (status === 'victory' && runQuestTier === 2 && runQuestId) {
-    for (const player of Object.values(_gameState.players)) {
-      if (player && player.accountId) {
-        await completeQuestTier(player.accountId, runQuestId, 2);
+    void (async () => {
+      for (const accountId of accountIds) {
+        await completeQuestTier(accountId, runQuestId, 2);
       }
-    }
+    })().catch((err) => {
+      console.error('[run] quest tier persistence failed:', err && err.stack ? err.stack : err);
+    });
   }
-
-  ensureTerminalRunStaysInDungeon(_gameState);
 }
 
 function resetTransientRunState() {
@@ -3685,6 +3770,8 @@ function buildPlayerHotSnapshot(id, p) {
         : p.cardWindupStartTime + p.cardWindupMs)
       : 0,
     cardWindupCardId: p.pendingCardUse?.cardId || null,
+    // Cosmetics/username change rarely; still included so late joiners and
+    // appearance updates stay consistent without a separate channel on tick.
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     username: p.username,
   };
@@ -3705,6 +3792,77 @@ function buildPlayerColdSnapshot(id, p) {
     debugScenario: p.debugScenario,
     returnRewardsPreview: previewReturnRewards(id),
   };
+}
+
+/** Whitelist of enemy fields the client renderer actually reads. */
+function buildEnemyHotSnapshot(enemy) {
+  if (!enemy) return enemy;
+  return {
+    id: enemy.id,
+    type: enemy.type,
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z,
+    rotation: enemy.rotation,
+    hp: enemy.hp,
+    maxHp: enemy.maxHp,
+    shieldHp: enemy.shieldHp,
+    maxShieldHp: enemy.maxShieldHp,
+    flying: !!enemy.flying,
+    altitude: Number.isFinite(enemy.altitude) ? enemy.altitude : 0,
+    attackState: enemy.attackState || 'idle',
+    variant: enemy.variant,
+    namedRare: enemy.namedRare,
+    windupDirX: enemy.windupDirX,
+    windupDirZ: enemy.windupDirZ,
+    windupTargetId: enemy.windupTargetId,
+    windupTargetType: enemy.windupTargetType,
+    enrageTelegraphUntil: enemy.enrageTelegraphUntil,
+    revealedUntil: enemy.revealedUntil,
+    slowedUntil: enemy.slowedUntil || 0,
+    slowFactor: enemy.slowFactor || 1,
+    burningUntil: enemy.burningUntil || 0,
+  };
+}
+
+/** Whitelist of minion fields the client renderer actually reads. */
+function buildMinionHotSnapshot(minion) {
+  if (!minion) return minion;
+  return {
+    id: minion.id,
+    type: minion.type,
+    x: minion.x,
+    y: minion.y,
+    z: minion.z,
+    rotation: minion.rotation,
+    hp: minion.hp,
+    maxHp: minion.maxHp,
+    ttl: minion.ttl,
+    ownerId: minion.ownerId,
+    flying: !!minion.flying,
+    altitude: Number.isFinite(minion.altitude) ? minion.altitude : 0,
+    attackState: minion.attackState,
+    attackRange: minion.attackRange,
+    attackWindupMs: minion.attackWindupMs,
+    projectileHitWidth: minion.projectileHitWidth,
+    windupDirX: minion.windupDirX,
+    windupDirZ: minion.windupDirZ,
+    isEscort: !!minion.isEscort,
+    lastChargePulseAt: minion.lastChargePulseAt,
+    taunt: !!minion.taunt,
+  };
+}
+
+function buildHotRunSnapshot(run) {
+  if (!run) return null;
+  // Pass through HUD/objective fields; drop only known bulky internal tables.
+  const {
+    _spawnTable,
+    _pendingSpawns,
+    enemySpawnPlan,
+    ...rest
+  } = run;
+  return rest;
 }
 
 function buildWorldSnapshot(shopOffer) {
@@ -3733,7 +3891,9 @@ function buildWorldSnapshot(shopOffer) {
     debugTimeScaleAllowed: process.env.ALLOW_DEBUG_SCENARIOS === '1',
     selectedQuestId: _gameState.selectedQuestId,
     selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-    run: _gameState.run,
+    // Explicit null is an authoritative clear; undefined would be omitted by
+    // Socket.IO serialization and make clients retain the previous run.
+    run: _gameState.run ?? null,
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,
     runSpawnSeed: _gameState.runSpawnSeed ?? null,
@@ -3746,18 +3906,76 @@ function buildWorldSnapshot(shopOffer) {
   };
 }
 
+/** Per-tick world payload: slim entities + omit the slowest catalogs. */
+function buildHotWorldSnapshot() {
+  return {
+    enemies: (_gameState.enemies || []).map(buildEnemyHotSnapshot),
+    minions: (_gameState.minions || []).map(buildMinionHotSnapshot),
+    loot: _gameState.loot,
+    iceBalls: _gameState.iceBalls || [],
+    enchantments: (_gameState.enchantments || [])
+      .filter((e) => e.armed && e.target === 'ground')
+      .map((e) => ({
+        id: e.id,
+        effect: e.effect,
+        x: e.x,
+        z: e.z,
+        radius: e.radius,
+        expiresAt: e.expiresAt,
+        armed: e.armed,
+      })),
+    lobby: _gameState.lobby,
+    gamePhase: _gameState.gamePhase,
+    debugTimeScale: _gameState.debugTimeScale ?? 1,
+    selectedQuestId: _gameState.selectedQuestId,
+    selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+    run: buildHotRunSnapshot(_gameState.run),
+    layoutSeed: _gameState.layoutSeed,
+    telepipe: _gameState.telepipe || null,
+  };
+}
+
 function hotStateSnapshot() {
   ensureTerminalRunStaysInDungeon();
-  const shopOffer = ensureShopOffer();
 
   const players = {};
+  const lobbyPhase = isLobbyPhase(_gameState);
   for (const [id, p] of Object.entries(_gameState.players)) {
-    players[id] = buildPlayerHotSnapshot(id, p);
+    // Hub presence already streams lobby positions; keep a tiny vitals stub so
+    // HUD (ready/hp/currency) still updates without double-shipping cosmetics.
+    if (lobbyPhase) {
+      const hot = buildPlayerHotSnapshot(id, p);
+      players[id] = {
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        rotation: p.rotation,
+        hp: p.hp,
+        dead: p.dead,
+        ready: p.ready,
+        magicStones: p.magicStones,
+        currency: p.currency,
+        xp: Number.isFinite(p.xp) ? p.xp : 0,
+        level: Number.isFinite(p.level) ? p.level : 1,
+        extracted: !!p.extracted,
+        username: p.username,
+        // Explicit clears prevent the client merge from retaining a commitment
+        // or run-only rewards after the phase changes back to the lobby.
+        cardUseState: hot.cardUseState,
+        cardWindupUntil: hot.cardWindupUntil,
+        cardWindupCardId: hot.cardWindupCardId,
+        runRewards: null,
+        returnRewardsPreview: null,
+        currencyEarnedThisRun: 0,
+      };
+    } else {
+      players[id] = buildPlayerHotSnapshot(id, p);
+    }
   }
 
   return {
     players,
-    ...buildWorldSnapshot(shopOffer),
+    ...buildHotWorldSnapshot(),
   };
 }
 
@@ -3779,7 +3997,35 @@ function stateSnapshot() {
   };
 }
 
-async function returnPlayersToLobby(state = _gameState) {
+function buildPublicPlayersSnapshot() {
+  const players = {};
+  for (const [id, player] of Object.entries(_gameState.players || {})) {
+    players[id] = buildPlayerHotSnapshot(id, player);
+  }
+  return players;
+}
+
+function publicStateSnapshot() {
+  ensureTerminalRunStaysInDungeon();
+  return {
+    players: buildPublicPlayersSnapshot(),
+    ...buildWorldSnapshot(ensureShopOffer()),
+  };
+}
+
+function personalizedStateSnapshot(viewerPlayerId) {
+  const snapshot = publicStateSnapshot();
+  const player = _gameState.players?.[viewerPlayerId];
+  if (player && snapshot.players[viewerPlayerId]) {
+    snapshot.players[viewerPlayerId] = {
+      ...snapshot.players[viewerPlayerId],
+      ...buildPlayerColdSnapshot(viewerPlayerId, player),
+    };
+  }
+  return snapshot;
+}
+
+function returnPlayersToLobby(state = _gameState) {
   if (!state || !state._lobbyId) {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
@@ -3823,15 +4069,13 @@ async function returnPlayersToLobby(state = _gameState) {
     state._pendingMinionBreaths.length = 0;
   }
 
-  for (const playerId of Object.keys(state.players)) {
-    await savePlayerData(playerId);
-  }
-
-  const io = getIoTarget();
-  if (io) {
-    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-  }
+  const playerIds = Object.keys(state.players);
+  emitLobbyStateWithPrivatePlayerUpdates(state._lobbyId);
   _broadcastLobbyUpdate();
+
+  // Persistence is detached so the global lobby context never spans storage I/O.
+  void Promise.all(playerIds.map((playerId) => savePlayerData(playerId)))
+    .catch((err) => console.error('[persistence] return-to-lobby save failed:', err));
 }
 
 function giveUpRun(state = _gameState) {
@@ -3891,10 +4135,7 @@ function giveUpRun(state = _gameState) {
     state._pendingMinionBreaths.length = 0;
   }
 
-  const io = getIoTarget();
-  if (io) {
-    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-  }
+  emitLobbyStateWithPrivatePlayerUpdates(state._lobbyId);
   _broadcastLobbyUpdate();
   return { ok: true };
 }
@@ -4042,7 +4283,7 @@ function checkAllReadyInner() {
       }
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
-      emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyStateWithPrivatePlayerUpdates(_gameState._lobbyId);
       emitRunStartDialogue(io);
     } catch (err) {
       console.error('[checkAllReady] deploy failed:', err && err.stack ? err.stack : err);
@@ -4132,7 +4373,9 @@ module.exports = {
   extractPersistentData,
   persistenceKey,
   savePlayerData,
+  savePlayerSnapshot,
   saveAllPlayers,
+  saveAllPlayersSnapshot,
   createRunState,
   startDungeonRun,
   emitRunStartDialogue,
@@ -4199,8 +4442,16 @@ module.exports = {
   assignRunSpawnPositions,
   applyTelepipeReadyHand,
   stateSnapshot,
+  publicStateSnapshot,
+  personalizedStateSnapshot,
   hotStateSnapshot,
   buildWorldSnapshot,
+  buildHotWorldSnapshot,
+  buildEnemyHotSnapshot,
+  buildMinionHotSnapshot,
+  emitToLobbyRoom,
+  emitLobbyHotState,
+  emitLobbyStateWithPrivatePlayerUpdates,
   isPlayerActive,
   hasActivePlayers,
   restoreCardCheckpoint,

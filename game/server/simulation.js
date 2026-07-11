@@ -2510,13 +2510,17 @@ function _cardEffects() {
  * Resolve due player card wind-ups. Each committed use was queued by tryBeginCardWindup
  * with costs paid at commit; when cardWindupMs elapses we run the stored effect using
  * the locked origin/rotation from pendingCardUse (see cardEffects.resolvePendingCardUse).
+ *
+ * Returns an array of zero-arg thunks (not started). The game loop runs them in a
+ * separate withLobbyContext pass after every lobby's sync tick so one lobby's async
+ * card work cannot skip the rest of the frame.
  */
 function processPendingCardWindups() {
-  if (!_gameState || !isPlayingPhase(_gameState)) return;
-  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+  if (!_gameState || !isPlayingPhase(_gameState)) return [];
+  if (!_gameState.run || _gameState.run.status !== 'playing') return [];
 
   const lobbyId = _gameState._lobbyId;
-  if (!lobbyId) return;
+  if (!lobbyId) return [];
 
   const now = Date.now();
   const lobby = { id: lobbyId };
@@ -2539,13 +2543,11 @@ function processPendingCardWindups() {
 
     const socket = _findSocketByPlayerId ? _findSocketByPlayerId(playerId) : null;
     const pseudoSocket = socket || { playerId, emit: () => {} };
-    tasks.push(_cardEffects().resolvePendingCardUse(pseudoSocket, _gameState, lobby, player));
+    const state = _gameState;
+    tasks.push(() => _cardEffects().resolvePendingCardUse(pseudoSocket, state, lobby, player));
   }
 
-  if (tasks.length > 0) {
-    return Promise.all(tasks);
-  }
-  return null;
+  return tasks;
 }
 
 function findNearestMinionNear(enemyX, enemyZ, detectionRadius, options = {}) {
@@ -4073,31 +4075,37 @@ function regenMagicStones() {
 
 /**
  * Remove stale players (no activity for STALE_THRESHOLD ms).
+ * Players with a live socket are skipped: backgrounded tabs throttle the
+ * app-level heartbeat, but Socket.IO ping/pong still proves the transport is
+ * alive. Hard-remove only when there is no connected socket.
  */
 function cleanupStalePlayers() {
   for (const playerId in _gameState.players) {
     const player = _gameState.players[playerId];
-    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
-      // Persist latest state before removing
-      if (_savePlayerData) {
-        void _savePlayerData(playerId);
+    if (Date.now() - player.lastActivity <= STALE_THRESHOLD) continue;
+
+    if (_findSocketByPlayerId) {
+      const socket = _findSocketByPlayerId(playerId);
+      if (socket && socket.connected) {
+        // Live transport — do not hard-remove; Soft-disconnect grace covers
+        // true disconnects via the disconnect handler + DISCONNECT_GRACE_MS.
+        continue;
       }
-      if (_findSocketByPlayerId) {
-        const socket = _findSocketByPlayerId(playerId);
-        if (socket && socket.connected) {
-          socket.disconnect();
-        }
-      }
-      // Route the removal through the registry so the player's lobby mapping,
-      // minions, and trades are cleaned up and an emptied lobby is deleted
-      // rather than left orphaned. Falls back to a bare delete for legacy/test
-      // gameState that is not tracked in the lobby registry.
-      const removed = lobbies.removePlayerFromLobby(playerId);
-      if (!removed) {
-        delete _gameState.players[playerId];
-      }
-      console.log(`Player disconnected due to inactivity: ${playerId}`);
     }
+
+    // Persist latest state before removing
+    if (_savePlayerData) {
+      void _savePlayerData(playerId);
+    }
+    // Route the removal through the registry so the player's lobby mapping,
+    // minions, and trades are cleaned up and an emptied lobby is deleted
+    // rather than left orphaned. Falls back to a bare delete for legacy/test
+    // gameState that is not tracked in the lobby registry.
+    const removed = lobbies.removePlayerFromLobby(playerId);
+    if (!removed) {
+      delete _gameState.players[playerId];
+    }
+    console.log(`Player disconnected due to inactivity: ${playerId}`);
   }
 }
 

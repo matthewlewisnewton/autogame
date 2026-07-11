@@ -62,10 +62,9 @@ async function publishLocalLobbies() {
   } else {
     await client.set(key, payload, 'EX', PUBLISH_TTL_SEC);
   }
-
-  const { reconcileStaleLobbyOwners } = require('./lobbyRegistry');
-  const localLobbies = require('./lobbies');
-  await reconcileStaleLobbyOwners(() => [...localLobbies._lobbies.keys()]);
+  // Stale-owner reconcile runs on its own interval (reconcileStaleLobbyOwnersSweep).
+  // Do not call it here — every join/leave/ready broadcast would otherwise serial-
+  // EXISTS every remote instance's publish key.
 }
 
 async function listGlobalLobbySummaries() {

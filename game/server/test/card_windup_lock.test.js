@@ -84,7 +84,7 @@ describe('card wind-up input lock until resolution', () => {
 		const cardError = await cardErrorPromise;
 		expect(cardError.reason).toBe('Card commitment in progress');
 
-		await processPendingCardWindups();
+		await Promise.all((processPendingCardWindups() || []).map((fn) => Promise.resolve().then(fn)));
 
 		expect(isPlayerCardCommitted(player)).toBe(false);
 		expect(player.pendingCardUse).toBeUndefined();
@@ -159,7 +159,7 @@ describe('card wind-up input lock until resolution', () => {
 		expect(guardReject.reason).toBe('card_commitment');
 		expect(player.blockingUntil || 0).toBe(blockingBefore);
 
-		await processPendingCardWindups();
+		await Promise.all((processPendingCardWindups() || []).map((fn) => Promise.resolve().then(fn)));
 		expect(isPlayerCardCommitted(player)).toBe(false);
 
 		player.keyItemCooldownUntil = 0;
@@ -233,7 +233,7 @@ describe('card wind-up input lock until resolution', () => {
 		expect(player.nextDrawAt).toBe(nextDrawAtBefore);
 
 		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
-		await processPendingCardWindups();
+		await Promise.all((processPendingCardWindups() || []).map((fn) => Promise.resolve().then(fn)));
 		runGameLoopTick();
 		const cardUsedPayload = await cardUsedPromise;
 

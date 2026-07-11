@@ -63,6 +63,8 @@ const {
   PROJECTILE_HIT_WIDTH,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
+  SESSION_REVALIDATE_INTERVAL_MS,
+  LOBBY_PUBLISH_INTERVAL_MS,
   EMPTY_LOBBY_TTL_MS,
   BOUNDS_MARGIN,
   COOLDOWN_MS,
@@ -139,12 +141,24 @@ function disconnectSocketsForSession(sessionToken) {
   return disconnected;
 }
 
-async function validateSocketSession(socket) {
+async function validateSocketSession(socket, { force = false } = {}) {
   const sessionToken = socket?.data?.sessionToken;
-  if (!sessionToken || !(await getSession(sessionToken))) {
+  if (!sessionToken) {
     if (socket?.connected) socket.disconnect(true);
     return false;
   }
+
+  const now = Date.now();
+  const lastValidatedAt = socket.data._sessionValidatedAt || 0;
+  if (!force && lastValidatedAt && (now - lastValidatedAt) < SESSION_REVALIDATE_INTERVAL_MS) {
+    return true;
+  }
+
+  if (!(await getSession(sessionToken))) {
+    if (socket?.connected) socket.disconnect(true);
+    return false;
+  }
+  socket.data._sessionValidatedAt = now;
   return true;
 }
 
@@ -263,6 +277,7 @@ const {
 const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
 const ENEMY_DISPLAY_CATALOG = buildEnemyDisplayCatalog();
 const progression = require('./progression');
+
 const questDialogue = require('./questDialogue');
 const {
   CARD_DEFS,
@@ -334,6 +349,7 @@ const {
   persistenceKey,
   savePlayerData,
   saveAllPlayers,
+  saveAllPlayersSnapshot,
   setTestProvider,
   getProvider,
   createRunState,
@@ -396,6 +412,8 @@ const {
   checkAllReady,
   assignRunSpawnPositions,
   stateSnapshot,
+  publicStateSnapshot,
+  personalizedStateSnapshot,
   hotStateSnapshot,
   buildWorldSnapshot,
   checkTelepipeProximity,
@@ -409,6 +427,12 @@ const {
   getGameState: getProgressionGameState,
   setRebuildWallColliders: setProgressionRebuildWallColliders,
 } = progression;
+
+const STATIC_CATALOG_HASH = crypto
+  .createHash('sha1')
+  .update(JSON.stringify({ keyItemDefs: KEY_ITEM_DEFS, enemyDisplayCatalog: ENEMY_DISPLAY_CATALOG }))
+  .digest('hex')
+  .slice(0, 16);
 
 // Card-use dispatch lives in its own module; wired up via setCallbacks() below
 // once io and the index.js-local helpers it needs are defined.
@@ -601,6 +625,9 @@ function restartBackgroundTimers() {
   _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('reapAbandonedLobbies', reapAbandonedLobbies), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('reconcileStaleLobbyOwners', reconcileStaleLobbyOwnersSweep), STALE_CLEANUP_INTERVAL_MS));
+  // Keep lobbies:<instanceId> publish keys warm under their Redis TTL so quiet
+  // runs do not lose fly-replay ownership after PUBLISH_TTL_SEC of no joins/leaves.
+  _intervals.push(setInterval(safeIntervalTick('publishLocalLobbies', () => publishLocalLobbies()), LOBBY_PUBLISH_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
@@ -613,7 +640,9 @@ function cleanupStalePlayersInAllLobbies() {
 function saveAllPlayersInAllLobbies() {
   const saves = [];
   for (const lobby of lobbies._lobbies.values()) {
-    saves.push(withLobbyContext(lobby, () => saveAllPlayers()));
+    withLobbyContext(lobby, () => {
+      saves.push(saveAllPlayersSnapshot());
+    });
   }
   return Promise.all(saves);
 }
@@ -859,9 +888,10 @@ function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE,
   forEachSocketInLobby(lobby.id, (socket) => {
     const player = state.players[socket.playerId];
     if (!player) return;
+    const socketExtraFields = typeof extraFields === 'function' ? extraFields(socket) : extraFields;
     socket.emit(event, {
       ...buildQuestUpdatePayload(state, player.accountId),
-      ...extraFields,
+      ...socketExtraFields,
     });
   });
 }
@@ -1468,16 +1498,16 @@ function handleDropInJoin(socket, lobby) {
   withLobbyContext(lobby, () => initializePlayerForActiveRun(player));
 }
 
-async function joinLobbyWithPhasePolicy(socket, lobby) {
+async function joinLobbyWithPhasePolicy(socket, lobby, options = {}) {
   if (isPlayingPhase(lobby.state)) {
     if (!allowDropInJoin(lobby)) {
       socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Drop-in not allowed for this lobby' });
       return;
     }
-    await joinPlayerToLobby(socket, lobby, { dropIn: true });
+    await joinPlayerToLobby(socket, lobby, { ...options, dropIn: true });
     return;
   }
-  await joinPlayerToLobby(socket, lobby);
+  await joinPlayerToLobby(socket, lobby, options);
 }
 
 function emitLobbyJoined(socket, lobby, explicitPlayerId) {
@@ -1486,7 +1516,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const player = lobbyState.players[playerId];
   if (!player) return;
   ensureShopOffer(lobbyState);
-  const state = stateSnapshot();
+  const state = personalizedStateSnapshot(playerId);
 
   const joinedPayload = {
     lobbyId: lobby.id,
@@ -1498,13 +1528,17 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     state,
     layoutSeed: lobbyState.layoutSeed,
     layout: lobbyState.layout,
-    hubLayout: HUB_LAYOUT,
     selectedDeck: player.selectedDeck,
     inventory: player.inventory,
     ownedCards: player.ownedCards,
     shopOffer: lobbyState.shopOffer,
     ...buildQuestUpdatePayload(lobbyState, player.accountId),
   };
+  // Hub layout is static per build — send once per socket connection.
+  if (!socket.data._hubLayoutSent) {
+    joinedPayload.hubLayout = HUB_LAYOUT;
+    socket.data._hubLayoutSent = true;
+  }
   if (isLobbyPhase(lobbyState)) {
     try {
       syncHubPresenceFromLobby(lobby);
@@ -1521,7 +1555,9 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
 
 async function joinPlayerToLobby(socket, lobby, options = {}) {
   const playerId = socket.playerId;
-  const savedData = await loadSavedPlayerData(playerId);
+  const savedData = Object.prototype.hasOwnProperty.call(options, 'savedData')
+    ? options.savedData
+    : await loadSavedPlayerData(playerId);
   if (!socket.connected) return false;
 
   return withLobbyContext(lobby, () => {
@@ -1780,6 +1816,12 @@ function leaveLobbyForSocket(socket) {
   if (!lobby) return null;
 
   const playerId = socket.playerId;
+  const player = lobby.state.players[playerId];
+  if (player) {
+    // Capture the fully hydrated lobby record before removePlayerFromLobby
+    // makes it unavailable. This also closes the connect-time hydration race.
+    lobbies.registerSession(playerId, buildSessionFromPlayer(player));
+  }
   withLobbyContext(lobby, () => {
     void savePlayerData(playerId);
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
@@ -1833,21 +1875,20 @@ function resolveProjectileAim(player, data, state) {
 }
 
 function runGameLoopTick() {
-  // Async card resolution keeps the owning lobby context active until its
-  // continuation finishes. Skip overlapping interval ticks instead of building
-  // a stale backlog behind that context.
-  if (_lobbyContextAsyncActive && !_lobbyContextScope.getStore()) return true;
+  const windupJobs = [];
   for (const lobby of lobbies._lobbies.values()) {
     try {
-      const contextResult = withLobbyContext(lobby, () => {
+      const dueWindups = withLobbyContext(lobby, () => {
         const state = lobby.state;
-        let pendingWindups = null;
+        let windupThunks = [];
         if (isLobbyPhase(state)) {
           applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
           syncAndEmitHubPresenceIfChanged(io, lobby);
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
-          pendingWindups = processPendingCardWindups();
+          // Collect due windups as thunks (do not start promises here) so this
+          // lobby's sync tick stays synchronous and later lobbies still tick.
+          windupThunks = processPendingCardWindups() || [];
           applyPlayerMovement(state, buildMovementContext(state));
           updateQuestDialogueRoomEntry();
           checkTelepipeProximity();
@@ -1932,20 +1973,34 @@ function runGameLoopTick() {
         if (!state._applyingDebugScenario) {
           const snapshot = hotStateSnapshot();
           const room = io.to(lobby.id);
-          const target = room.volatile && typeof room.volatile.emit === 'function'
-            ? room.volatile
-            : room;
+          let target = room;
+          const redisAdapterActive = !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+          if (redisAdapterActive && target.local && typeof target.local.emit === 'function') {
+            target = target.local;
+          }
+          if (target.volatile && typeof target.volatile.emit === 'function') {
+            target = target.volatile;
+          }
           target.emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
         }
-        return pendingWindups;
+        return windupThunks;
       });
-      if (contextResult && typeof contextResult.then === 'function') {
-        contextResult.catch((err) => {
-          console.error(`[gameLoop] lobby ${lobby.id} async tick failed:`, err && err.stack ? err.stack : err);
-        });
+      if (Array.isArray(dueWindups) && dueWindups.length > 0) {
+        windupJobs.push({ lobby, thunks: dueWindups });
       }
     } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
+    }
+  }
+
+  // Resolve windups after every lobby's sync tick for this frame.
+  for (const { lobby, thunks } of windupJobs) {
+    try {
+      withLobbyContext(lobby, () => {
+        for (const resolveWindup of thunks) resolveWindup();
+      });
+    } catch (err) {
+      console.error(`[gameLoop] lobby ${lobby.id} windup resolution failed:`, err && err.stack ? err.stack : err);
     }
   }
   return true;
@@ -2141,10 +2196,11 @@ async function startServer(port) {
     // Authenticated connection — accountId is the stable identity
     const playerId = accountId;
 
-    const savedData = await loadSavedPlayerData(accountId || playerId);
-    if (disconnectedDuringSetup || !socket.connected) return;
-
-    const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
+    // Register handlers BEFORE awaiting persistence so connect-time client emits
+    // (pending join / createLobby) are not silently dropped by Socket.IO.
+    // joinPlayerToLobby loads its own saved row; sessionPlayer is filled in below
+    // for INIT and as a browser-session fallback.
+    const sessionPlayer = buildPlayerRecord(playerId, accountId, username, null);
 
     socket.playerId = playerId;
     // The product maintains one authoritative socket per account. Apply that
@@ -2188,8 +2244,23 @@ async function startServer(port) {
       lobbyBrowserRoom: LOBBY_BROWSER_ROOM,
       syncLivePlayerCosmetic,
       validateSocketSession,
+      loadSavedPlayerData,
     };
     lobbyHandlers.register(socket, ctx);
+
+    const savedData = await loadSavedPlayerData(accountId || playerId);
+    if (disconnectedDuringSetup || !socket.connected) {
+      unregisterPlayerSocket(playerId, socket);
+      lobbies.removeSession(playerId);
+      return;
+    }
+
+    if (savedData) {
+      // Merge persistence into the provisional sessionPlayer already referenced by handlers.
+      const hydrated = buildPlayerRecord(playerId, accountId, username, savedData);
+      Object.assign(sessionPlayer, hydrated);
+      lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
+    }
 
     const resumeLobby = lobbies.getLobbyForPlayer(playerId);
     if (resumeLobby && resumeLobby.state.players[playerId]) {
@@ -2207,9 +2278,8 @@ async function startServer(port) {
 
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    void (async () => {
-      const lobbyList = await listGlobalLobbySummaries();
-      socket.emit(SERVER_TO_CLIENT.INIT, {
+    const buildInitPayload = (lobbyList) => {
+      const payload = {
         id: playerId,
         playerId,
         accountId,
@@ -2219,26 +2289,27 @@ async function startServer(port) {
         inventory: sessionPlayer.inventory,
         ownedCards: sessionPlayer.ownedCards,
         lobbies: lobbyList,
-        keyItemDefs: KEY_ITEM_DEFS,
-        enemyDisplayCatalog: ENEMY_DISPLAY_CATALOG,
-      });
+        catalogHash: STATIC_CATALOG_HASH,
+      };
+      // Skip static catalogs when the client already cached this build's hash.
+      const clientHash = socket.handshake?.auth?.catalogHash
+        || socket.handshake?.query?.catalogHash
+        || null;
+      if (clientHash !== STATIC_CATALOG_HASH) {
+        payload.keyItemDefs = KEY_ITEM_DEFS;
+        payload.enemyDisplayCatalog = ENEMY_DISPLAY_CATALOG;
+      }
+      return payload;
+    };
+
+    void (async () => {
+      const lobbyList = await listGlobalLobbySummaries();
+      socket.emit(SERVER_TO_CLIENT.INIT, buildInitPayload(lobbyList));
 
       void broadcastLobbyList();
     })().catch((err) => {
       console.error('[socket:connection] init lobby list failed:', err && err.stack ? err.stack : err);
-      socket.emit(SERVER_TO_CLIENT.INIT, {
-        id: playerId,
-        playerId,
-        accountId,
-        username,
-        inLobby: !!lobbies.getLobbyForPlayer(playerId),
-        selectedDeck: sessionPlayer.selectedDeck,
-        inventory: sessionPlayer.inventory,
-        ownedCards: sessionPlayer.ownedCards,
-        lobbies: lobbies.listLobbySummaries(),
-        keyItemDefs: KEY_ITEM_DEFS,
-        enemyDisplayCatalog: ENEMY_DISPLAY_CATALOG,
-      });
+      socket.emit(SERVER_TO_CLIENT.INIT, buildInitPayload(lobbies.listLobbySummaries()));
       void broadcastLobbyList();
     });
     } catch (err) {
@@ -2366,6 +2437,8 @@ if (typeof module !== 'undefined' && module.exports) {
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
+    publicStateSnapshot,
+    personalizedStateSnapshot,
     hotStateSnapshot,
     buildWorldSnapshot,
     createRunState,

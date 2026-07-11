@@ -157,7 +157,7 @@ describe('reconcileStaleLobbyOwnersSweep', () => {
   });
 });
 
-describe('publishLocalLobbies reconcile hook', () => {
+describe('publishLocalLobbies TTL refresh', () => {
   const originalInstanceId = process.env.INSTANCE_ID;
 
   beforeEach(() => {
@@ -179,12 +179,15 @@ describe('publishLocalLobbies reconcile hook', () => {
     }
   });
 
-  it('prunes local ghost entries after publishing', async () => {
+  it('refreshes the instance publish key without reconciling owners inline', async () => {
     const client = getRedisClient();
     await seedOwner(client, 'stale-local', 'publish-instance');
 
     await publishLocalLobbies();
 
-    expect(await getLobbyOwner('stale-local')).toBeNull();
+    // publishLocalLobbies no longer reconciles — that is the sweep's job.
+    expect(await getLobbyOwner('stale-local')).toBe('publish-instance');
+    const raw = await client.get('lobbies:publish-instance');
+    expect(raw).toBeTruthy();
   });
 });
