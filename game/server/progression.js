@@ -168,7 +168,7 @@ function getIoTarget() {
       room = io.to(_gameState._lobbyId);
     }
   }
-  if (!room && _gameState && _lobbies) {
+  if (!room && _gameState && _lobbies && typeof io.to === 'function') {
     for (const lobby of _lobbies.values()) {
       if (lobby.state === _gameState) {
         room = io.to(lobby.id);
@@ -191,8 +191,8 @@ function getIoTarget() {
  */
 function emitToLobbyRoom(lobbyId, event, payload, { volatile = false } = {}) {
   const io = _getIo();
-  if (!io || typeof io.to !== 'function') return;
-  let room = lobbyId ? io.to(lobbyId) : getIoTarget();
+  if (!io) return;
+  let room = lobbyId && typeof io.to === 'function' ? io.to(lobbyId) : getIoTarget();
   if (!room || typeof room.emit !== 'function') return;
   const redisAdapterActive = !!(io.of && io.of('/')?.adapter?.constructor?.name === 'RedisAdapter')
     || !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
@@ -3944,6 +3944,7 @@ function hotStateSnapshot() {
     // Hub presence already streams lobby positions; keep a tiny vitals stub so
     // HUD (ready/hp/currency) still updates without double-shipping cosmetics.
     if (lobbyPhase) {
+      const hot = buildPlayerHotSnapshot(id, p);
       players[id] = {
         x: p.x,
         y: p.y,
@@ -3958,6 +3959,14 @@ function hotStateSnapshot() {
         level: Number.isFinite(p.level) ? p.level : 1,
         extracted: !!p.extracted,
         username: p.username,
+        // Explicit clears prevent the client merge from retaining a commitment
+        // or run-only rewards after the phase changes back to the lobby.
+        cardUseState: hot.cardUseState,
+        cardWindupUntil: hot.cardWindupUntil,
+        cardWindupCardId: hot.cardWindupCardId,
+        runRewards: null,
+        returnRewardsPreview: null,
+        currencyEarnedThisRun: 0,
       };
     } else {
       players[id] = buildPlayerHotSnapshot(id, p);

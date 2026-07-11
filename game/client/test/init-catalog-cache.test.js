@@ -8,7 +8,7 @@ function bind(ctx) {
 			handlers.set(event, handler);
 		},
 	};
-	bindInitHandlers(socket, {
+	const boundCtx = {
 		rendererSetMyId() {},
 		renderDeckEditor() {},
 		setLoggedInStatus() {},
@@ -21,8 +21,12 @@ function bind(ctx) {
 		isCurrentSocket() { return true; },
 		STORAGE_KEY_PLAYER_ID: 'test-player-id',
 		...ctx,
-	});
-	return (payload) => handlers.get('init')(payload);
+	};
+	bindInitHandlers(socket, boundCtx);
+	return {
+		ctx: boundCtx,
+		emitInit: (payload) => handlers.get('init')(payload),
+	};
 }
 
 describe('INIT catalog cache', () => {
@@ -31,8 +35,7 @@ describe('INIT catalog cache', () => {
 	});
 
 	it('stores catalogs received with a new hash', () => {
-		const ctx = {};
-		const emitInit = bind(ctx);
+		const { ctx, emitInit } = bind({});
 		emitInit({
 			id: 'p1',
 			catalogHash: 'hash-1',
@@ -48,8 +51,7 @@ describe('INIT catalog cache', () => {
 	it('hydrates catalogs when the server accepts the cached hash', () => {
 		localStorage.setItem('ag_key_item_defs', JSON.stringify({ guard_block: { cooldownMs: 2000 } }));
 		localStorage.setItem('ag_enemy_display_catalog', JSON.stringify({ boss: { name: 'Boss' } }));
-		const ctx = {};
-		const emitInit = bind(ctx);
+		const { ctx, emitInit } = bind({});
 		emitInit({ id: 'p1', catalogHash: 'hash-1' });
 
 		expect(ctx.keyItemDefs).toEqual({ guard_block: { cooldownMs: 2000 } });

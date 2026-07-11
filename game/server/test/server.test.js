@@ -106,6 +106,8 @@ import {
 	isPlayerCombatExhausted,
 	validateUseCardHand,
 	stateSnapshot,
+	publicStateSnapshot,
+	personalizedStateSnapshot,
 	hotStateSnapshot,
 	addMagicStones,
 	restoreCardCharges,
@@ -4241,9 +4243,9 @@ describe('run state', () => {
 			vi.useRealTimers();
 		});
 
-		it('throws when called outside lobby context', async () => {
+		it('throws when called outside lobby context', () => {
 			delete gameState._lobbyId;
-			await expect(returnPlayersToLobby()).rejects.toThrow('returnPlayersToLobby requires lobby context');
+			expect(() => returnPlayersToLobby()).toThrow('returnPlayersToLobby requires lobby context');
 		});
 
 		it('resets gamePhase to lobby', async () => {
@@ -5958,7 +5960,7 @@ describe('privacy-safe network snapshots', () => {
 	});
 
 	it('keeps all cold fields out of a room-wide snapshot', () => {
-		const snapshot = progressionModule.publicStateSnapshot();
+		const snapshot = publicStateSnapshot();
 		for (const player of Object.values(snapshot.players)) {
 			expect(player.hand).toBeUndefined();
 			expect(player.deck).toBeUndefined();
@@ -5969,7 +5971,7 @@ describe('privacy-safe network snapshots', () => {
 	});
 
 	it('includes cold fields only for the joining player', () => {
-		const snapshot = progressionModule.personalizedStateSnapshot('p1');
+		const snapshot = personalizedStateSnapshot('p1');
 		expect(snapshot.players.p1.hand).toEqual([{ id: 'iron_sword' }]);
 		expect(snapshot.players.p1.inventory).toBeDefined();
 		expect(snapshot.players.p2.hand).toBeUndefined();
@@ -5979,7 +5981,7 @@ describe('privacy-safe network snapshots', () => {
 
 	it('serializes a cleared run as explicit null', () => {
 		delete gameState.run;
-		expect(progressionModule.publicStateSnapshot().run).toBeNull();
+		expect(publicStateSnapshot().run).toBeNull();
 	});
 
 	it('preserves enemy status-effect fields in hot snapshots', () => {

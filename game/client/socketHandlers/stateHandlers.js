@@ -39,7 +39,12 @@ export function bindStateHandlers(s, ctx) {
 				for (const [id, incoming] of Object.entries(state.players)) {
 					const prior = prev.players[id];
 					if (!prior || !incoming) continue;
-					state.players[id] = { ...prior, ...incoming };
+					// Never retain another player's private fields. For this
+					// client, preserve cold collection fields across slim ticks;
+					// authoritative nulls from phase transitions still win.
+					state.players[id] = id === ctx.myId
+						? { ...prior, ...incoming }
+						: incoming;
 				}
 			}
 		}
