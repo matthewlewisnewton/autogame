@@ -5,6 +5,10 @@ const EVENT_POLICIES = Object.freeze({
   listLobbies: { refillPerSecond: 2, burst: 5 },
 });
 
+const LOG_INTERVAL_MS = 30000;
+let _dropsSinceLastLog = 0;
+let _lastDropLogAt = 0;
+
 function allowSocketEvent(socket, event, now = Date.now()) {
   if (!socket || event === 'disconnect') return true;
   if (!socket.data) socket.data = {};
@@ -26,6 +30,15 @@ function allowSocketEvent(socket, event, now = Date.now()) {
 
   if (bucket.tokens < 1) {
     socket.data._eventRateLimitDrops = (socket.data._eventRateLimitDrops || 0) + 1;
+    _dropsSinceLastLog += 1;
+    if (now - _lastDropLogAt >= LOG_INTERVAL_MS) {
+      console.warn(
+        `[socketRateLimit] dropped ${_dropsSinceLastLog} event(s) in the last ${LOG_INTERVAL_MS}ms`
+        + (socket.playerId ? ` (latest player=${socket.playerId} event=${event})` : ` (latest event=${event})`),
+      );
+      _dropsSinceLastLog = 0;
+      _lastDropLogAt = now;
+    }
     return false;
   }
 
@@ -33,8 +46,14 @@ function allowSocketEvent(socket, event, now = Date.now()) {
   return true;
 }
 
+function resetRateLimitMetricsForTests() {
+  _dropsSinceLastLog = 0;
+  _lastDropLogAt = 0;
+}
+
 module.exports = {
   allowSocketEvent,
+  resetRateLimitMetricsForTests,
   DEFAULT_POLICY,
   EVENT_POLICIES,
 };

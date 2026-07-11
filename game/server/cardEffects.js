@@ -68,7 +68,7 @@ const {
   releaseBurningCreatureCard,
   beginCreatureBurnDown,
   applyWyrmMinionBreathStats,
-  stateSnapshot,
+  emitLobbyHotState,
   cleanupAfterDamage,
   emitPlayerDeckUpdate,
 } = require('./progression');
@@ -189,7 +189,7 @@ function tryBeginCardWindup(ctx) {
     echoDamage: handCard.echoDamage,
   };
 
-  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitLobbyHotState(lobby.id, { playerId: socket.playerId });
   return true;
 }
 
@@ -246,7 +246,7 @@ async function applyAstralShieldCast(ctx) {
     replaceConsumedCard(player, data.slotIndex, handCard);
   }
 
-  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitLobbyHotState(lobby.id, { playerId: socket.playerId });
   io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
     playerId: socket.playerId,
     cardId: data.cardId,
@@ -361,7 +361,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           exhaustHandSlot(player, data.slotIndex, handCard);
         }
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -540,7 +540,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
         }
       }
 
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyHotState(lobby.id, { playerId: socket.playerId });
       io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
         playerId: socket.playerId,
         cardId: data.cardId,
@@ -619,7 +619,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -656,7 +656,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           );
           await cleanupAfterDamage();
           replaceConsumedCard(player, data.slotIndex, handCard);
-          io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+          emitLobbyHotState(lobby.id, { playerId: socket.playerId });
           io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
             playerId: socket.playerId,
             cardId: data.cardId,
@@ -669,7 +669,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           return;
         }
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -705,7 +705,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -732,7 +732,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -765,7 +765,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -785,7 +785,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -804,7 +804,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -830,7 +830,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -850,7 +850,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -877,7 +877,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -921,7 +921,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -953,7 +953,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -990,7 +990,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot(COOLDOWN_MS);
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1060,7 +1060,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1126,7 +1126,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
         consumeSpellSlot();
 
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1165,7 +1165,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
       consumeSpellSlot();
 
       // Broadcast updated hand to all clients
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyHotState(lobby.id, { playerId: socket.playerId });
 
       // Broadcast result to all clients
       io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
@@ -1229,7 +1229,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
       if (cardDef.effect === 'spike_trap' || cardDef.effect === 'cinder_snare') {
         spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId, originY);
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1245,7 +1245,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
 
       if (cardDef.effect === 'mirror_ward') {
         armSelfEnchantment(player, cardDef);
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id, { playerId: socket.playerId });
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1392,7 +1392,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
       beginCreatureBurnDown(player, data.slotIndex, burnCard, minion);
 
       // Broadcast updated hand to all clients
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyHotState(lobby.id, { playerId: socket.playerId });
 
       io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
         playerId: socket.playerId,
@@ -1433,7 +1433,7 @@ async function resolvePendingCardUse(socket, state, lobby, player) {
   });
 
   clearPlayerCardCommitment(player);
-  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitLobbyHotState(lobby.id, { playerId: socket.playerId });
 }
 
 module.exports = {

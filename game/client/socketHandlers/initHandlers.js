@@ -15,8 +15,11 @@ export function bindInitHandlers(s, ctx) {
 		ctx.mySelectedDeck = data.selectedDeck || [];
 		ctx.myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		ctx.myOwnedCards = data.ownedCards || {};
-		ctx.keyItemDefs = data.keyItemDefs || {};
-		ctx.enemyDisplayCatalog = data.enemyDisplayCatalog || null;
+		if (data.keyItemDefs) ctx.keyItemDefs = data.keyItemDefs;
+		if (data.enemyDisplayCatalog) ctx.enemyDisplayCatalog = data.enemyDisplayCatalog;
+		if (data.catalogHash) {
+			try { localStorage.setItem('ag_catalog_hash', data.catalogHash); } catch (_) {}
+		}
 		ctx.renderDeckEditor();
 
 		if (data.accountId) {
@@ -35,5 +38,11 @@ export function bindInitHandlers(s, ctx) {
 			ctx.lobbyBrowserStatusEl.textContent = 'Choose a lobby or create your own.';
 		}
 		ctx.handleLobbyDeepLinkAfterInit(data.lobbies);
+		// INIT is only sent after server handlers are registered — re-emit any
+		// pending join that may have been dropped if it raced the async setup.
+		// Skip when deep-link redirected to a new fly-instance socket.
+		if (ctx.emitPendingLobbyJoin && (!ctx.isCurrentSocket || ctx.isCurrentSocket(s))) {
+			ctx.emitPendingLobbyJoin(s, { force: true });
+		}
 	});
 }

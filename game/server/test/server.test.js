@@ -118,6 +118,7 @@ import {
 	DEFAULT_QUEST_ID,
 	io as serverIo,
 	STALE_THRESHOLD,
+	DISCONNECT_GRACE_MS,
 	MAX_MAGIC_STONES,
 	STARTING_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
@@ -2128,13 +2129,14 @@ describe('cleanupStalePlayers', () => {
 		vi.useRealTimers();
 	});
 
-	it('stale threshold constant is 10 seconds', () => {
-		expect(STALE_THRESHOLD).toBe(10000);
+	it('stale threshold constant matches disconnect grace (60 seconds)', () => {
+		expect(STALE_THRESHOLD).toBe(60000);
+		expect(STALE_THRESHOLD).toBe(DISCONNECT_GRACE_MS);
 	});
 
 	it('removes multiple stale players', () => {
-		addPlayer('p1', { lastActivity: Date.now() - 20000 });
-		addPlayer('p2', { lastActivity: Date.now() - 15000 });
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 20000 });
+		addPlayer('p2', { lastActivity: Date.now() - STALE_THRESHOLD - 15000 });
 		addPlayer('p3', { lastActivity: Date.now() });
 
 		cleanupStalePlayers();
@@ -2201,8 +2203,8 @@ describe('cleanupStalePlayers', () => {
 		};
 		setTestProvider(mockProvider);
 
-		addPlayer('p1', { lastActivity: Date.now() - 20000, currency: 10 });
-		addPlayer('p2', { lastActivity: Date.now() - 15000, currency: 20 });
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 20000, currency: 10 });
+		addPlayer('p2', { lastActivity: Date.now() - STALE_THRESHOLD - 15000, currency: 20 });
 
 		cleanupStalePlayers();
 
@@ -2215,16 +2217,15 @@ describe('cleanupStalePlayers', () => {
 		setTestProvider(null);
 	});
 
-	it('disconnects socket by matching socket.playerId (not socket.id)', () => {
+	it('keeps connected-but-idle players (backgrounded tabs) instead of hard-removing', () => {
 		const disconnectCalled = [];
 		const mockSocket = {
-			id: 'random-socket-id-abc123',  // Socket.IO socket.id ≠ playerId
+			id: 'random-socket-id-abc123',
 			playerId: 'p1',
 			connected: true,
 			disconnect: () => disconnectCalled.push(true)
 		};
 
-		// Replace io.sockets.sockets with a map containing our mock socket
 		const originalSockets = serverIo.sockets.sockets;
 		const mockMap = new Map();
 		mockMap.set(mockSocket.id, mockSocket);
@@ -2235,10 +2236,9 @@ describe('cleanupStalePlayers', () => {
 
 		cleanupStalePlayers();
 
-		expect(disconnectCalled).toHaveLength(1);
-		expect(gameState.players['p1']).toBeUndefined();
+		expect(disconnectCalled).toHaveLength(0);
+		expect(gameState.players['p1']).toBeDefined();
 
-		// Restore original sockets
 		unregisterPlayerSocket('p1', mockSocket);
 		serverIo.sockets.sockets = originalSockets;
 	});
@@ -6017,16 +6017,25 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		for (const field of COLD_PLAYER_FIELDS) {
 			expect(p[field]).toBeUndefined();
 		}
-		expect(snapshot.enemies).toEqual(gameState.enemies);
-		expect(snapshot.minions).toEqual(gameState.minions);
+		expect(snapshot.enemies).toHaveLength(1);
+		expect(snapshot.enemies[0]).toEqual(expect.objectContaining({
+			id: 'e1', x: 5, z: 5, hp: 50,
+		}));
+		// Internal AI fields must not ship on the hot tick.
+		expect(snapshot.enemies[0].wanderTarget).toBeUndefined();
+		expect(snapshot.minions).toHaveLength(1);
+		expect(snapshot.minions[0]).toEqual(expect.objectContaining({
+			id: 'm1', x: 0, z: 0, hp: 50, ttl: 30, ownerId: 'p1',
+		}));
 		expect(snapshot.loot).toEqual(gameState.loot);
 		expect(snapshot.gamePhase).toBe('playing');
-		expect(snapshot.run).toEqual(gameState.run);
-		expect(snapshot.layoutSeed).toBe(42);
+		expect(snapshot.run).toEqual(expect.objectContaining({ id: 'run-1', status: 'playing' }));
+		// Slow-changing catalogs are omitted from hot ticks (client merges).
+		expect(snapshot.layoutSeed).toBeUndefined();
 		expect(snapshot.lobby).toEqual([]);
-		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
-		expect(snapshot).toHaveProperty('shopOffer');
-		expect(snapshot.suspendedRunSummary).toBeNull();
+		expect(snapshot.dungeonBounds).toBeUndefined();
+		expect(snapshot.shopOffer).toBeUndefined();
+		expect(snapshot.suspendedRunSummary).toBeUndefined();
 	});
 
 	it('full stateSnapshot still includes cold fields', () => {

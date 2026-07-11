@@ -14,6 +14,35 @@ export function bindStateHandlers(s, ctx) {
 		const hasAuthoritativeHand = Array.isArray(incomingMe?.hand);
 		const magicStonesChanged = Number.isFinite(incomingMe?.magicStones)
 			&& incomingMe.magicStones !== previousMe?.magicStones;
+
+		// Hot ticks omit cold player fields and slow world catalogs. Merge so
+		// the client retains hand/deck/inventory/shopOffer/layoutSeed/etc.
+		if (ctx.gameState && state && typeof state === 'object') {
+			const prev = ctx.gameState;
+			const SLOW_WORLD_KEYS = [
+				'shopOffer', 'dungeonBounds', 'layoutSeed', 'runSpawnSeed',
+				'selectedQuestId', 'selectedQuestTier', 'currency',
+				'suspendedRunSummary', 'debugTimeScaleAllowed', 'layout',
+			];
+			for (const key of SLOW_WORLD_KEYS) {
+				if (state[key] === undefined && prev[key] !== undefined) {
+					state[key] = prev[key];
+				}
+			}
+			if (state.run && prev.run && typeof state.run === 'object' && typeof prev.run === 'object') {
+				state.run = { ...prev.run, ...state.run };
+			} else if (state.run === undefined && prev.run !== undefined) {
+				state.run = prev.run;
+			}
+			if (prev.players && state.players) {
+				for (const [id, incoming] of Object.entries(state.players)) {
+					const prior = prev.players[id];
+					if (!prior || !incoming) continue;
+					state.players[id] = { ...prior, ...incoming };
+				}
+			}
+		}
+
 		if (ctx.myId && state?.players?.[ctx.myId] && ctx.gameState?.players?.[ctx.myId]) {
 			const prevHand = ctx.gameState.players[ctx.myId].hand;
 			if (Array.isArray(prevHand) && !Array.isArray(state.players[ctx.myId].hand)) {

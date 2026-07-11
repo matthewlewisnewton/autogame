@@ -1214,9 +1214,9 @@ if (deepLinkLobbyParam) {
 	}
 }
 
-function emitPendingLobbyJoin(sock = socket) {
+function emitPendingLobbyJoin(sock = socket, { force = false } = {}) {
 	if (!pendingLobbyJoin || !sock) return;
-	if (pendingLobbyJoinSentSocketId === sock.id) return;
+	if (!force && pendingLobbyJoinSentSocketId === sock.id) return;
 	sock.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: pendingLobbyJoin.lobbyId });
 	pendingLobbyJoinSentSocketId = sock.id ?? null;
 }
@@ -1272,20 +1272,21 @@ function createSocket(options) {
 	}
 	const affinity = options && typeof options === 'object' ? options : {};
 	const { lobbyId, flyInstanceId } = affinity;
+	let cachedCatalogHash = null;
+	try { cachedCatalogHash = localStorage.getItem('ag_catalog_hash'); } catch (_) {}
 	const ioConfig = {
 		timeout: CONNECT_WATCHDOG_MS,
 		reconnection: true,
 		reconnectionAttempts: Infinity,
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
+		auth: cachedCatalogHash ? { catalogHash: cachedCatalogHash } : undefined,
 	};
-	if (lobbyId) {
-		ioConfig.query = { lobbyId };
-		if (flyInstanceId) {
-			ioConfig.query.fly_instance_id = flyInstanceId;
-		}
-	} else if (flyInstanceId) {
-		ioConfig.query = { fly_instance_id: flyInstanceId };
+	if (lobbyId || flyInstanceId || cachedCatalogHash) {
+		ioConfig.query = {};
+		if (lobbyId) ioConfig.query.lobbyId = lobbyId;
+		if (flyInstanceId) ioConfig.query.fly_instance_id = flyInstanceId;
+		if (cachedCatalogHash) ioConfig.query.catalogHash = cachedCatalogHash;
 	}
 	if (flyInstanceId) {
 		ioConfig.extraHeaders = {
@@ -2147,10 +2148,9 @@ function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
 		if (!socket || socket.connected === false) return;
-		const target = socket.volatile && typeof socket.volatile.emit === 'function'
-			? socket.volatile
-			: socket;
-		target.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
+		// Reliable (non-volatile): a dropped keepalive is worse than a slightly
+		// delayed one — background tabs already struggle to meet STALE_THRESHOLD.
+		socket.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
 	}, 2000);
 }
 

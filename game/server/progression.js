@@ -162,19 +162,50 @@ function getIoTarget() {
   const io = _getIo();
   if (!io) return null;
   const { getLobbyById, _lobbies } = require('./lobbies');
+  let room = null;
   if (_gameState && _gameState._lobbyId && typeof io.to === 'function') {
     if (getLobbyById(_gameState._lobbyId)) {
-      return io.to(_gameState._lobbyId);
+      room = io.to(_gameState._lobbyId);
     }
   }
-  if (_gameState && _lobbies) {
+  if (!room && _gameState && _lobbies) {
     for (const lobby of _lobbies.values()) {
       if (lobby.state === _gameState) {
-        return io.to(lobby.id);
+        room = io.to(lobby.id);
+        break;
       }
     }
   }
-  return io;
+  if (!room) return io;
+  // Lobby rooms are single-instance (fly affinity). Prefer .local so the Redis
+  // adapter does not pub/sub every tick/action to every other machine.
+  return room.local && typeof room.local.emit === 'function' ? room.local : room;
+}
+
+/**
+ * Emit a lobby-scoped event, preferring local-only delivery when available.
+ */
+function emitToLobbyRoom(lobbyId, event, payload, { volatile = false } = {}) {
+  const io = _getIo();
+  if (!io || typeof io.to !== 'function') return;
+  let room = lobbyId ? io.to(lobbyId) : getIoTarget();
+  if (!room || typeof room.emit !== 'function') return;
+  if (room.local && typeof room.local.emit === 'function') {
+    room = room.local;
+  }
+  const target = volatile && room.volatile && typeof room.volatile.emit === 'function'
+    ? room.volatile
+    : room;
+  target.emit(event, payload);
+}
+
+/**
+ * Hot room broadcast after an action. Optionally push a private deck/hand
+ * update to the acting player so cold inventory never fans out to the room.
+ */
+function emitLobbyHotState(lobbyId, { playerId = null, volatile = false } = {}) {
+  emitToLobbyRoom(lobbyId, SERVER_TO_CLIENT.STATE_UPDATE, hotStateSnapshot(), { volatile });
+  if (playerId) emitPlayerDeckUpdate(playerId);
 }
 
 function buildPlayerDeckUpdatePayload(player, extra = {}) {
@@ -3685,6 +3716,8 @@ function buildPlayerHotSnapshot(id, p) {
         : p.cardWindupStartTime + p.cardWindupMs)
       : 0,
     cardWindupCardId: p.pendingCardUse?.cardId || null,
+    // Cosmetics/username change rarely; still included so late joiners and
+    // appearance updates stay consistent without a separate channel on tick.
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     username: p.username,
   };
@@ -3704,6 +3737,79 @@ function buildPlayerColdSnapshot(id, p) {
     inventory: p.inventory,
     debugScenario: p.debugScenario,
     returnRewardsPreview: previewReturnRewards(id),
+  };
+}
+
+/** Whitelist of enemy fields the client renderer actually reads. */
+function buildEnemyHotSnapshot(enemy) {
+  if (!enemy) return enemy;
+  return {
+    id: enemy.id,
+    type: enemy.type,
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z,
+    rotation: enemy.rotation,
+    hp: enemy.hp,
+    maxHp: enemy.maxHp,
+    shieldHp: enemy.shieldHp,
+    maxShieldHp: enemy.maxShieldHp,
+    flying: !!enemy.flying,
+    altitude: Number.isFinite(enemy.altitude) ? enemy.altitude : 0,
+    attackState: enemy.attackState || 'idle',
+    variant: enemy.variant,
+    namedRare: enemy.namedRare,
+    windupDirX: enemy.windupDirX,
+    windupDirZ: enemy.windupDirZ,
+    windupTargetId: enemy.windupTargetId,
+    windupTargetType: enemy.windupTargetType,
+    enrageTelegraphUntil: enemy.enrageTelegraphUntil,
+    revealedUntil: enemy.revealedUntil,
+  };
+}
+
+/** Whitelist of minion fields the client renderer actually reads. */
+function buildMinionHotSnapshot(minion) {
+  if (!minion) return minion;
+  return {
+    id: minion.id,
+    type: minion.type,
+    x: minion.x,
+    y: minion.y,
+    z: minion.z,
+    rotation: minion.rotation,
+    hp: minion.hp,
+    maxHp: minion.maxHp,
+    ttl: minion.ttl,
+    ownerId: minion.ownerId,
+    flying: !!minion.flying,
+    altitude: Number.isFinite(minion.altitude) ? minion.altitude : 0,
+    attackState: minion.attackState,
+    attackRange: minion.attackRange,
+    attackWindupMs: minion.attackWindupMs,
+    projectileHitWidth: minion.projectileHitWidth,
+    windupDirX: minion.windupDirX,
+    windupDirZ: minion.windupDirZ,
+    isEscort: !!minion.isEscort,
+    lastChargePulseAt: minion.lastChargePulseAt,
+    taunt: !!minion.taunt,
+  };
+}
+
+function buildHotRunSnapshot(run) {
+  if (!run) return null;
+  // Client HUD needs objective/passage/wave status each tick; omit bulky static
+  // spawn tables and script definitions that only change on cold snapshots.
+  return {
+    status: run.status,
+    objective: run.objective,
+    passageLocks: run.passageLocks,
+    waveScript: run.waveScript,
+    encounter: run.encounter,
+    bossEncounter: run.bossEncounter,
+    startedAt: run.startedAt,
+    endedAt: run.endedAt,
+    summary: run.summary,
   };
 }
 
@@ -3746,18 +3852,64 @@ function buildWorldSnapshot(shopOffer) {
   };
 }
 
+/** Per-tick world payload: slim entities + omit slow-changing catalogs. */
+function buildHotWorldSnapshot() {
+  return {
+    enemies: (_gameState.enemies || []).map(buildEnemyHotSnapshot),
+    minions: (_gameState.minions || []).map(buildMinionHotSnapshot),
+    loot: _gameState.loot,
+    iceBalls: _gameState.iceBalls || [],
+    enchantments: (_gameState.enchantments || [])
+      .filter((e) => e.armed && e.target === 'ground')
+      .map((e) => ({
+        id: e.id,
+        effect: e.effect,
+        x: e.x,
+        z: e.z,
+        radius: e.radius,
+        expiresAt: e.expiresAt,
+        armed: e.armed,
+      })),
+    lobby: _gameState.lobby,
+    gamePhase: _gameState.gamePhase,
+    debugTimeScale: _gameState.debugTimeScale ?? 1,
+    run: buildHotRunSnapshot(_gameState.run),
+    telepipe: _gameState.telepipe || null,
+  };
+}
+
 function hotStateSnapshot() {
   ensureTerminalRunStaysInDungeon();
-  const shopOffer = ensureShopOffer();
 
   const players = {};
+  const lobbyPhase = isLobbyPhase(_gameState);
   for (const [id, p] of Object.entries(_gameState.players)) {
-    players[id] = buildPlayerHotSnapshot(id, p);
+    // Hub presence already streams lobby positions; keep a tiny vitals stub so
+    // HUD (ready/hp/currency) still updates without double-shipping cosmetics.
+    if (lobbyPhase) {
+      players[id] = {
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        rotation: p.rotation,
+        hp: p.hp,
+        dead: p.dead,
+        ready: p.ready,
+        magicStones: p.magicStones,
+        currency: p.currency,
+        xp: Number.isFinite(p.xp) ? p.xp : 0,
+        level: Number.isFinite(p.level) ? p.level : 1,
+        extracted: !!p.extracted,
+        username: p.username,
+      };
+    } else {
+      players[id] = buildPlayerHotSnapshot(id, p);
+    }
   }
 
   return {
     players,
-    ...buildWorldSnapshot(shopOffer),
+    ...buildHotWorldSnapshot(),
   };
 }
 
@@ -3823,15 +3975,15 @@ async function returnPlayersToLobby(state = _gameState) {
     state._pendingMinionBreaths.length = 0;
   }
 
-  for (const playerId of Object.keys(state.players)) {
-    await savePlayerData(playerId);
-  }
-
+  const playerIds = Object.keys(state.players);
   const io = getIoTarget();
   if (io) {
     io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
+
+  // Persist outside the critical path as a single batch (callers may still await).
+  await Promise.all(playerIds.map((playerId) => savePlayerData(playerId)));
 }
 
 function giveUpRun(state = _gameState) {
@@ -4201,6 +4353,11 @@ module.exports = {
   stateSnapshot,
   hotStateSnapshot,
   buildWorldSnapshot,
+  buildHotWorldSnapshot,
+  buildEnemyHotSnapshot,
+  buildMinionHotSnapshot,
+  emitToLobbyRoom,
+  emitLobbyHotState,
   isPlayerActive,
   hasActivePlayers,
   restoreCardCheckpoint,

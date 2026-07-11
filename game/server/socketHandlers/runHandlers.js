@@ -11,7 +11,7 @@ const {
   addMagicStones,
   recordCrystalCollected,
   checkRunTerminalState,
-  stateSnapshot,
+  emitLobbyHotState,
   maybeEmitPlayerDeckUpdate,
 } = require('../progression');
 
@@ -178,7 +178,7 @@ function register(socket, ctx) {
       return;
     }
 
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    emitLobbyHotState(lobby.id, { playerId: socket.playerId });
     });
   });
 

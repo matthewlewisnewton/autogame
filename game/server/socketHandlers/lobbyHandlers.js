@@ -31,7 +31,7 @@ const {
   unlockHatForPlayer,
   chargeAppearanceChangeForPlayer,
   healAtMedic,
-  stateSnapshot,
+  emitLobbyHotState,
   savePlayerData,
   abandonSuspendedRun,
 } = require('../progression');
@@ -63,6 +63,7 @@ function register(socket, ctx) {
     lobbyBrowserRoom,
     syncLivePlayerCosmetic,
     validateSocketSession,
+    loadSavedPlayerData,
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
@@ -78,60 +79,66 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
-    return lobbies.withMembershipLock(async () => {
-      if (!socket.connected) return;
-      if (lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobby = lobbies.createLobby(data && data.name);
-      withLobbyContext(lobby, () => {
-        applyLayoutForQuest(
-          lobby.state,
-          lobby.state.selectedQuestId,
-          lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-        );
-        ensureShopOffer();
+    // Load persistence outside the global membership lock so one slow read
+    // cannot block every join/leave/create on the instance.
+    return Promise.resolve(loadSavedPlayerData(playerId)).then((savedData) => {
+      return lobbies.withMembershipLock(async () => {
+        if (!socket.connected) return;
+        if (lobbies.getLobbyForPlayer(playerId)) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
+          return;
+        }
+        const lobby = lobbies.createLobby(data && data.name);
+        withLobbyContext(lobby, () => {
+          applyLayoutForQuest(
+            lobby.state,
+            lobby.state.selectedQuestId,
+            lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+          );
+          ensureShopOffer();
+        });
+        try {
+          const joined = await joinPlayerToLobby(socket, lobby, { savedData });
+          if (!joined) lobbies.deleteLobbyIfEmpty(lobby.id);
+        } catch (err) {
+          lobbies.deleteLobbyIfEmpty(lobby.id);
+          throw err;
+        }
       });
-      try {
-        const joined = await joinPlayerToLobby(socket, lobby);
-        if (!joined) lobbies.deleteLobbyIfEmpty(lobby.id);
-      } catch (err) {
-        lobbies.deleteLobbyIfEmpty(lobby.id);
-        throw err;
-      }
     });
   });
 
   socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
-    return lobbies.withMembershipLock(async () => {
-      if (!socket.connected) return;
-      const existingLobby = lobbies.getLobbyForPlayer(playerId);
-      if (existingLobby) {
-        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-        const player = existingLobby.state.players[playerId];
-        if (player && player.connected === false && lobbyId === existingLobby.id) {
-          await reconnectPlayerToLobby(socket, existingLobby);
+    return Promise.resolve(loadSavedPlayerData(playerId)).then((savedData) => {
+      return lobbies.withMembershipLock(async () => {
+        if (!socket.connected) return;
+        const existingLobby = lobbies.getLobbyForPlayer(playerId);
+        if (existingLobby) {
+          const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+          const player = existingLobby.state.players[playerId];
+          if (player && player.connected === false && lobbyId === existingLobby.id) {
+            await reconnectPlayerToLobby(socket, existingLobby);
+            return;
+          }
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
           return;
         }
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-      if (!lobbyId) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
-        return;
-      }
-      const lobby = lobbies.getLobbyById(lobbyId);
-      if (!lobby) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
-        return;
-      }
-      if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
-        socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
-        return;
-      }
-      await joinLobbyWithPhasePolicy(socket, lobby);
+        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+        if (!lobbyId) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
+          return;
+        }
+        const lobby = lobbies.getLobbyById(lobbyId);
+        if (!lobby) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
+          return;
+        }
+        if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
+          socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
+          return;
+        }
+        await joinLobbyWithPhasePolicy(socket, lobby, { savedData });
+      });
     });
   });
 
@@ -195,11 +202,14 @@ function register(socket, ctx) {
     // data.layout/data.layoutSeed) — deterministic for this questId+tier, the
     // same seed the run will use.
     const { layoutSeed, layout } = previewLayoutForQuest(questId, tier);
-    emitQuestPayloadToLobby(lobby, {
-      extraFields: {
-        layoutSeed,
-        layout,
-      },
+    // Per-account unlock maps go to every socket; the full preview layout is
+    // only needed by the selecting client to cache for deploy.
+    emitQuestPayloadToLobby(lobby);
+    socket.emit(SERVER_TO_CLIENT.QUEST_UPDATE, {
+      selectedQuestId: questId,
+      selectedQuestTier: tier,
+      layoutSeed,
+      layout,
     });
     broadcastLobbyUpdate(lobby);
     });
@@ -315,7 +325,7 @@ function register(socket, ctx) {
       const finishSuccess = (cost) => {
         const user = findUserByAccountId(player.accountId);
         syncLivePlayerCosmetic(player.accountId, user.cosmetic);
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        emitLobbyHotState(lobby.id);
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_CHANGED, {
           cosmetic: user.cosmetic,
           currency: player.currency,
@@ -378,7 +388,7 @@ function register(socket, ctx) {
         currency: player.currency,
         cost: result.cost,
       });
-      io.to(state._lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyHotState(state._lobbyId);
     });
   });
 

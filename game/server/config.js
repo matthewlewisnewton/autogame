@@ -23,8 +23,14 @@ const MINION_FOLLOW_DISTANCE = 3;
 const MINION_FOLLOW_SPEED = 2.5;
 const MINION_CHASE_SPEED_GRUNT = 2.5;
 const MINION_CHASE_SPEED_SKIRMISHER = 4.5;
-const STALE_THRESHOLD = 10000; // 10 seconds
+// Must be >= DISCONNECT_GRACE_MS so connected-but-idle players (e.g. backgrounded
+// tabs whose app heartbeat is throttled) are not punished harder than a hard
+// disconnect. Live sockets are also skipped entirely in cleanupStalePlayers —
+// Socket.IO ping/pong owns transport liveness.
+const STALE_THRESHOLD = 60000; // 60 seconds
 const DISCONNECT_GRACE_MS = 60000; // keep disconnected players in lobby for reconnection
+const SESSION_REVALIDATE_INTERVAL_MS = 30000; // throttle Redis session checks on heartbeat
+const LOBBY_PUBLISH_INTERVAL_MS = 10000; // keep lobbies:<instanceId> TTL warm during quiet runs
 // How long a lobby may have zero connected players before it is reaped from the
 // registry. Kept distinct from DISCONNECT_GRACE_MS (the per-player reconnection
 // window) even though the value currently matches.
@@ -185,6 +191,8 @@ module.exports = {
   MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
+  SESSION_REVALIDATE_INTERVAL_MS,
+  LOBBY_PUBLISH_INTERVAL_MS,
   EMPTY_LOBBY_TTL_MS,
   COOLDOWN_MS,
   BOUNDS_MARGIN,
