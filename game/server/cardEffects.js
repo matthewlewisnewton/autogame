@@ -193,7 +193,7 @@ function tryBeginCardWindup(ctx) {
   return true;
 }
 
-async function applyAstralShieldCast(ctx) {
+function applyAstralShieldCast(ctx) {
   const {
     socket, state, lobby, data, cardDef, handCard, player,
     originX, originY = null, originZ, now, hasOverclock, fromWindup = false,
@@ -239,7 +239,7 @@ async function applyAstralShieldCast(ctx) {
   }
   state.minions.push(minion);
 
-  await cleanupAfterDamage();
+  cleanupAfterDamage();
 
   if (!ctx.fromWindup) {
     applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
@@ -263,7 +263,7 @@ async function applyAstralShieldCast(ctx) {
 
 // Dispatch a useCard event. Called from socket.on('useCard') inside the active
 // lobby context (gameState already pointed at lobby.state by withLobbyContext).
-async function handleUseCard(socket, state, lobby, data) {
+function handleUseCard(socket, state, lobby, data) {
   if (!isPlayingPhase(state)) return;
 
   if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
@@ -308,7 +308,7 @@ async function handleUseCard(socket, state, lobby, data) {
     return;
   }
 
-  await executeUseCard(socket, state, lobby, data, {
+  executeUseCard(socket, state, lobby, data, {
     now,
     hasOverclock,
     handCard: handValidation.handCard,
@@ -323,7 +323,7 @@ async function handleUseCard(socket, state, lobby, data) {
 // Shared card-effect dispatch for instant use and deferred wind-up resolution.
 // When options.fromWindupResolution is true, costs were paid at commit and
 // pendingCardUse origin/rotation are authoritative for the strike.
-async function executeUseCard(socket, state, lobby, data, precomputed = {}, options = {}) {
+function executeUseCard(socket, state, lobby, data, precomputed = {}, options = {}) {
     const fromWindup = options.fromWindupResolution === true;
     const now = precomputed.now ?? Date.now();
     const player = precomputed.player ?? state.players[socket.playerId];
@@ -531,7 +531,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
         player.currency = (player.currency || 0) + totalCurrencyGained;
         player.currencyEarnedThisRun = (player.currencyEarnedThisRun || 0) + totalCurrencyGained;
       }
-      await cleanupAfterDamage();
+      cleanupAfterDamage();
 
       if (!fromWindup) {
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cooldownMs);
@@ -654,7 +654,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
             fallbackDamage,
             { attackerId: socket.playerId }
           );
-          await cleanupAfterDamage();
+          cleanupAfterDamage();
           replaceConsumedCard(player, data.slotIndex, handCard);
           emitLobbyHotState(lobby.id, { playerId: socket.playerId });
           io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
@@ -761,7 +761,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           cardDef.damage || 0,
           cardDef.frozenBonusDamage || 0
         );
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -873,7 +873,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           cardDef,
           socket.playerId
         );
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -917,7 +917,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           originY: aim.originY,
           dirY,
         });
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -949,7 +949,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           { attackerId: socket.playerId }
         );
         spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId, originY);
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -1003,7 +1003,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
       }
 
       if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
-        await applyAstralShieldCast({
+        applyAstralShieldCast({
           socket, state, lobby, data, cardDef, handCard, player,
           originX, originY, originZ, now, hasOverclock, fromWindup,
         });
@@ -1056,7 +1056,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           player.debugHooks.forceStatusRoll = null;
         }
 
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -1122,7 +1122,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
           });
         }
 
-        await cleanupAfterDamage();
+        cleanupAfterDamage();
 
         consumeSpellSlot();
 
@@ -1160,7 +1160,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
       const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
       const appliedHpHealed = radial.hpHealed ? healPlayer(socket.playerId, radial.hpHealed) : 0;
 
-      await cleanupAfterDamage();
+      cleanupAfterDamage();
 
       consumeSpellSlot();
 
@@ -1281,7 +1281,7 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
         if (!fromWindup) {
           player.magicStones -= magicStoneCost;
         }
-        await applyAstralShieldCast({
+        applyAstralShieldCast({
           socket, state, lobby, data, cardDef, handCard, player,
           originX, originY, originZ, now, hasOverclock, fromWindup,
         });
@@ -1408,11 +1408,11 @@ async function executeUseCard(socket, state, lobby, data, precomputed = {}, opti
     }
 }
 
-async function resolvePendingCardUse(socket, state, lobby, player) {
+function resolvePendingCardUse(socket, state, lobby, player) {
   const pending = player.pendingCardUse;
   if (!pending) return;
 
-  await executeUseCard(socket, state, lobby, {
+  executeUseCard(socket, state, lobby, {
     cardId: pending.cardId,
     slotIndex: pending.slotIndex,
     rotation: pending.rotation,

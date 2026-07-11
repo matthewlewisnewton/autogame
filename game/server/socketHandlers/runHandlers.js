@@ -27,7 +27,7 @@ function register(socket, ctx) {
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.RETURN_TO_LOBBY, () => {
-    withLobbyFromSocket(socket, async (state) => {
+    withLobbyFromSocket(socket, (state) => {
     if (state.run && state.run.status === 'playing') {
       socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Run still in progress' });
       return;
@@ -35,7 +35,7 @@ function register(socket, ctx) {
 
     if (!state.run) return;
 
-    await returnPlayersToLobby(state);
+    returnPlayersToLobby(state);
     });
   });
 
@@ -154,8 +154,8 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.USE_CARD, (data) => {
-    void withLobbyFromSocket(socket, async (state, lobby) => {
-      await cardEffects.handleUseCard(socket, state, lobby, data);
+    withLobbyFromSocket(socket, (state, lobby) => {
+      cardEffects.handleUseCard(socket, state, lobby, data);
     });
   });
 
@@ -183,7 +183,7 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.LOOT_PICKUP, (data) => {
-    void withLobbyFromSocket(socket, async (state, lobby) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
     if (state.run && state.run.status !== 'playing') return;
 
@@ -218,7 +218,7 @@ function register(socket, ctx) {
     void savePlayerData(socket.playerId);
 
     if (isCrystal) {
-      await checkRunTerminalState();
+      checkRunTerminalState();
     }
     });
   });

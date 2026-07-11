@@ -349,6 +349,7 @@ const {
   persistenceKey,
   savePlayerData,
   saveAllPlayers,
+  saveAllPlayersSnapshot,
   setTestProvider,
   getProvider,
   createRunState,
@@ -411,6 +412,7 @@ const {
   checkAllReady,
   assignRunSpawnPositions,
   stateSnapshot,
+  personalizedStateSnapshot,
   hotStateSnapshot,
   buildWorldSnapshot,
   checkTelepipeProximity,
@@ -637,7 +639,9 @@ function cleanupStalePlayersInAllLobbies() {
 function saveAllPlayersInAllLobbies() {
   const saves = [];
   for (const lobby of lobbies._lobbies.values()) {
-    saves.push(withLobbyContext(lobby, () => saveAllPlayers()));
+    withLobbyContext(lobby, () => {
+      saves.push(saveAllPlayersSnapshot());
+    });
   }
   return Promise.all(saves);
 }
@@ -883,9 +887,10 @@ function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE,
   forEachSocketInLobby(lobby.id, (socket) => {
     const player = state.players[socket.playerId];
     if (!player) return;
+    const socketExtraFields = typeof extraFields === 'function' ? extraFields(socket) : extraFields;
     socket.emit(event, {
       ...buildQuestUpdatePayload(state, player.accountId),
-      ...extraFields,
+      ...socketExtraFields,
     });
   });
 }
@@ -1510,7 +1515,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const player = lobbyState.players[playerId];
   if (!player) return;
   ensureShopOffer(lobbyState);
-  const state = stateSnapshot();
+  const state = personalizedStateSnapshot(playerId);
 
   const joinedPayload = {
     lobbyId: lobby.id,
@@ -1810,6 +1815,12 @@ function leaveLobbyForSocket(socket) {
   if (!lobby) return null;
 
   const playerId = socket.playerId;
+  const player = lobby.state.players[playerId];
+  if (player) {
+    // Capture the fully hydrated lobby record before removePlayerFromLobby
+    // makes it unavailable. This also closes the connect-time hydration race.
+    lobbies.registerSession(playerId, buildSessionFromPlayer(player));
+  }
   withLobbyContext(lobby, () => {
     void savePlayerData(playerId);
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
@@ -1863,10 +1874,6 @@ function resolveProjectileAim(player, data, state) {
 }
 
 function runGameLoopTick() {
-  // Async card resolution keeps the owning lobby context active until its
-  // continuation finishes. Skip overlapping interval ticks instead of building
-  // a stale backlog behind that context.
-  if (_lobbyContextAsyncActive && !_lobbyContextScope.getStore()) return true;
   const windupJobs = [];
   for (const lobby of lobbies._lobbies.values()) {
     try {
@@ -1987,9 +1994,13 @@ function runGameLoopTick() {
 
   // Resolve windups after every lobby's sync tick for this frame.
   for (const { lobby, thunks } of windupJobs) {
-    void withLobbyContext(lobby, () => Promise.all(thunks.map((fn) => Promise.resolve().then(fn)))).catch((err) => {
+    try {
+      withLobbyContext(lobby, () => {
+        for (const resolveWindup of thunks) resolveWindup();
+      });
+    } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} windup resolution failed:`, err && err.stack ? err.stack : err);
-    });
+    }
   }
   return true;
 }

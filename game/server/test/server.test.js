@@ -5938,6 +5938,70 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 	});
 });
 
+describe('privacy-safe network snapshots', () => {
+	beforeEach(() => {
+		resetState();
+		addPlayer('p1', {
+			deck: ['iron_sword'],
+			hand: [{ id: 'iron_sword' }],
+			inventory: createInventoryFromOwnedCards({ iron_sword: 1 }),
+			selectedDeck: ['p1-card'],
+			ownedCards: { iron_sword: 1 },
+		});
+		addPlayer('p2', {
+			deck: ['flame_blade'],
+			hand: [{ id: 'flame_blade' }],
+			inventory: createInventoryFromOwnedCards({ flame_blade: 1 }),
+			selectedDeck: ['p2-card'],
+			ownedCards: { flame_blade: 1 },
+		});
+	});
+
+	it('keeps all cold fields out of a room-wide snapshot', () => {
+		const snapshot = progressionModule.publicStateSnapshot();
+		for (const player of Object.values(snapshot.players)) {
+			expect(player.hand).toBeUndefined();
+			expect(player.deck).toBeUndefined();
+			expect(player.inventory).toBeUndefined();
+			expect(player.selectedDeck).toBeUndefined();
+			expect(player.ownedCards).toBeUndefined();
+		}
+	});
+
+	it('includes cold fields only for the joining player', () => {
+		const snapshot = progressionModule.personalizedStateSnapshot('p1');
+		expect(snapshot.players.p1.hand).toEqual([{ id: 'iron_sword' }]);
+		expect(snapshot.players.p1.inventory).toBeDefined();
+		expect(snapshot.players.p2.hand).toBeUndefined();
+		expect(snapshot.players.p2.deck).toBeUndefined();
+		expect(snapshot.players.p2.inventory).toBeUndefined();
+	});
+
+	it('serializes a cleared run as explicit null', () => {
+		delete gameState.run;
+		expect(progressionModule.publicStateSnapshot().run).toBeNull();
+	});
+
+	it('preserves enemy status-effect fields in hot snapshots', () => {
+		gameState.enemies = [{
+			id: 'status-enemy',
+			type: 'grunt',
+			x: 0,
+			y: 0.5,
+			z: 0,
+			hp: 20,
+			slowedUntil: 1234,
+			slowFactor: 0.4,
+			burningUntil: 5678,
+		}];
+		expect(hotStateSnapshot().enemies[0]).toEqual(expect.objectContaining({
+			slowedUntil: 1234,
+			slowFactor: 0.4,
+			burningUntil: 5678,
+		}));
+	});
+});
+
 describe('hotStateSnapshot() — slim per-tick payload', () => {
 	const COLD_PLAYER_FIELDS = [
 		'deck',

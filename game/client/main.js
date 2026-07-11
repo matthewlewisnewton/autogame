@@ -1273,7 +1273,12 @@ function createSocket(options) {
 	const affinity = options && typeof options === 'object' ? options : {};
 	const { lobbyId, flyInstanceId } = affinity;
 	let cachedCatalogHash = null;
-	try { cachedCatalogHash = localStorage.getItem('ag_catalog_hash'); } catch (_) {}
+	try {
+		const hash = localStorage.getItem('ag_catalog_hash');
+		const hasCachedCatalogs = localStorage.getItem('ag_key_item_defs')
+			&& localStorage.getItem('ag_enemy_display_catalog');
+		cachedCatalogHash = hasCachedCatalogs ? hash : null;
+	} catch (_) {}
 	const ioConfig = {
 		timeout: CONNECT_WATCHDOG_MS,
 		reconnection: true,

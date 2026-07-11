@@ -30,7 +30,9 @@ export function bindStateHandlers(s, ctx) {
 			}
 			if (state.run && prev.run && typeof state.run === 'object' && typeof prev.run === 'object') {
 				state.run = { ...prev.run, ...state.run };
-			} else if (state.run === undefined && prev.run !== undefined) {
+			} else if (state.run === undefined
+				&& state.gamePhase === 'playing'
+				&& prev.run !== undefined) {
 				state.run = prev.run;
 			}
 			if (prev.players && state.players) {

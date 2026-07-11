@@ -15,8 +15,26 @@ export function bindInitHandlers(s, ctx) {
 		ctx.mySelectedDeck = data.selectedDeck || [];
 		ctx.myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		ctx.myOwnedCards = data.ownedCards || {};
-		if (data.keyItemDefs) ctx.keyItemDefs = data.keyItemDefs;
-		if (data.enemyDisplayCatalog) ctx.enemyDisplayCatalog = data.enemyDisplayCatalog;
+		if (data.keyItemDefs) {
+			ctx.keyItemDefs = data.keyItemDefs;
+			try { localStorage.setItem('ag_key_item_defs', JSON.stringify(data.keyItemDefs)); } catch (_) {}
+		} else if (data.catalogHash) {
+			try {
+				const cached = localStorage.getItem('ag_key_item_defs');
+				if (cached) ctx.keyItemDefs = JSON.parse(cached);
+			} catch (_) {}
+		}
+		if (data.enemyDisplayCatalog) {
+			ctx.enemyDisplayCatalog = data.enemyDisplayCatalog;
+			try {
+				localStorage.setItem('ag_enemy_display_catalog', JSON.stringify(data.enemyDisplayCatalog));
+			} catch (_) {}
+		} else if (data.catalogHash) {
+			try {
+				const cached = localStorage.getItem('ag_enemy_display_catalog');
+				if (cached) ctx.enemyDisplayCatalog = JSON.parse(cached);
+			} catch (_) {}
+		}
 		if (data.catalogHash) {
 			try { localStorage.setItem('ag_catalog_hash', data.catalogHash); } catch (_) {}
 		}
