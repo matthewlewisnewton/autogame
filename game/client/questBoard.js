@@ -250,17 +250,45 @@ function findQuestVariant(questVariants, questId, tier) {
 	) || null;
 }
 
-/** Tier lock state: prefer server-evaluated tierUnlocked when present. */
-export function isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier, row = null) {
+function levelUnlockGraphNodeState(levelUnlockGraph, questId, tier) {
+	const nodes = levelUnlockGraph && Array.isArray(levelUnlockGraph.nodes)
+		? levelUnlockGraph.nodes
+		: null;
+	if (!nodes) return null;
+	const node = nodes.find(
+		(n) => n && n.questId === questId && (n.tier ?? 1) === tier,
+	);
+	return node ? node.state : null;
+}
+
+/**
+ * Tier lock state: prefer server-evaluated tierUnlocked when present, then the
+ * level-unlock graph's node state. Both include `unlockRequires` prerequisite
+ * checks that the raw unlockedQuestTiers map does not, so the final
+ * unlockedQuestTiers fallback only applies when neither server-evaluated
+ * source is available.
+ */
+export function isQuestBoardTierLocked(
+	unlockedQuestTiers,
+	questVariants,
+	questId,
+	tier,
+	row = null,
+	levelUnlockGraph = null,
+) {
 	const normalizedTier = tier ?? 1;
 	if (normalizedTier === 1 && row && typeof row.tierUnlocked === 'boolean') {
 		return !row.tierUnlocked;
 	}
-	if (normalizedTier <= 1) return false;
-	const variant = findQuestVariant(questVariants, questId, tier);
-	if (variant && typeof variant.tierUnlocked === 'boolean') {
-		return !variant.tierUnlocked;
+	if (normalizedTier >= 2) {
+		const variant = findQuestVariant(questVariants, questId, tier);
+		if (variant && typeof variant.tierUnlocked === 'boolean') {
+			return !variant.tierUnlocked;
+		}
 	}
+	const nodeState = levelUnlockGraphNodeState(levelUnlockGraph, questId, normalizedTier);
+	if (nodeState) return nodeState === 'locked';
+	if (normalizedTier <= 1) return false;
 	return !isQuestTierUnlocked(unlockedQuestTiers, questId, tier);
 }
 
@@ -452,6 +480,7 @@ export function renderQuestBoard(
 		questVariants = [],
 		selectionLocked = false,
 		briefingPanelEl = null,
+		levelUnlockGraph = null,
 	} = {},
 ) {
 	if (!container) return;
@@ -488,7 +517,7 @@ export function renderQuestBoard(
 			const questId = card.dataset.questId;
 			const tier = Number(card.dataset.questTier) || 1;
 			const row = rows.find((entry) => entry.id === questId && (entry.tier ?? 1) === tier);
-			const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier, row);
+			const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier, row, levelUnlockGraph);
 			const locked = selectionLocked || tierLocked;
 			card.classList.toggle('quest-card-tier-locked', tierLocked);
 			card.classList.toggle('quest-card-locked', locked);
@@ -497,8 +526,11 @@ export function renderQuestBoard(
 			if (tierBadge) {
 				if (tier >= 2) {
 					tierBadge.textContent = tierLocked ? 'Tier 2 — Locked' : 'Tier 2';
-				} else if (tierLocked) {
-					tierBadge.textContent = 'Locked';
+				} else {
+					// Tier-1 badge must clear when a prereq unlock flips the card
+					// to unlocked on this fast path (e.g. clearing crucible_duel
+					// unlocks vault_onslaught without changing the rebuild key).
+					tierBadge.textContent = tierLocked ? 'Locked' : '';
 				}
 			}
 		});
@@ -511,7 +543,7 @@ export function renderQuestBoard(
 
 	for (const row of rows) {
 		const tier = row.tier ?? 1;
-		const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, row.id, tier, row);
+		const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, row.id, tier, row, levelUnlockGraph);
 		const locked = selectionLocked || tierLocked;
 
 		const card = document.createElement('button');

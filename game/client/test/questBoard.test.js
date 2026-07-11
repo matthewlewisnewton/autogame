@@ -8,6 +8,7 @@ import {
 	formatQuestTierLabel,
 	findQuestBoardEntry,
 	isQuestTierUnlocked,
+	isQuestBoardTierLocked,
 	renderQuestBoard,
 	renderQuestBriefing,
 } from '../questBoard.js';
@@ -301,6 +302,39 @@ describe('isQuestTierUnlocked()', () => {
 	});
 });
 
+describe('isQuestBoardTierLocked() levelUnlockGraph fallback', () => {
+	const graph = {
+		nodes: [
+			{ questId: 'vault_onslaught', tier: 1, state: 'locked' },
+			{ questId: 'training_caverns', tier: 1, state: 'unlocked' },
+			{ questId: 'training_caverns', tier: 2, state: 'locked' },
+		],
+	};
+
+	it('locks a prereq-gated tier-1 quest via graph state when tierUnlocked is absent', () => {
+		expect(isQuestBoardTierLocked({}, [], 'vault_onslaught', 1, {}, graph)).toBe(true);
+		expect(isQuestBoardTierLocked({}, [], 'training_caverns', 1, {}, graph)).toBe(false);
+	});
+
+	it('locks a tier-2 via graph state even when the persisted unlock map has it', () => {
+		expect(
+			isQuestBoardTierLocked({ training_caverns: [2] }, [], 'training_caverns', 2, null, graph),
+		).toBe(true);
+	});
+
+	it('explicit tierUnlocked still wins over graph state', () => {
+		expect(
+			isQuestBoardTierLocked({}, [], 'vault_onslaught', 1, { tierUnlocked: true }, graph),
+		).toBe(false);
+	});
+
+	it('keeps legacy behavior when no graph is provided', () => {
+		expect(isQuestBoardTierLocked({}, [], 'vault_onslaught', 1, {})).toBe(false);
+		expect(isQuestBoardTierLocked({ training_caverns: [2] }, [], 'training_caverns', 2)).toBe(false);
+		expect(isQuestBoardTierLocked({}, [], 'training_caverns', 2)).toBe(true);
+	});
+});
+
 describe('renderQuestBriefing()', () => {
 	let container;
 
@@ -481,6 +515,29 @@ describe('renderQuestBoard()', () => {
 		expect(selected).toEqual([{ questId: 'training_caverns', tier: 2 }]);
 	});
 
+	it('clears the tier-1 Locked badge incrementally when a prereq unlock flips tierUnlocked', () => {
+		const lockedQuests = SAMPLE_QUESTS.map((quest) =>
+			quest.id === 'crystal_rescue' ? { ...quest, tierUnlocked: false } : quest);
+		renderQuestBoard(container, lockedQuests, 'training_caverns', null, {
+			selectedQuestTier: 1,
+		});
+		const card = container.querySelector('[data-quest-id="crystal_rescue"][data-quest-tier="1"]');
+		expect(card.disabled).toBe(true);
+		expect(card.querySelector('.quest-tier-badge').textContent).toBe('Locked');
+
+		const unlockedQuests = SAMPLE_QUESTS.map((quest) =>
+			quest.id === 'crystal_rescue' ? { ...quest, tierUnlocked: true } : quest);
+		renderQuestBoard(container, unlockedQuests, 'training_caverns', null, {
+			selectedQuestTier: 1,
+		});
+
+		// Same card instance (incremental fast path), now unlocked with no stale badge.
+		expect(container.querySelector('[data-quest-id="crystal_rescue"][data-quest-tier="1"]')).toBe(card);
+		expect(card.disabled).toBe(false);
+		expect(card.classList.contains('quest-card-tier-locked')).toBe(false);
+		expect(card.querySelector('.quest-tier-badge').textContent).toBe('');
+	});
+
 	it('falls back to unlockedQuestTiers when tierUnlocked is absent on variant', () => {
 		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
 			questVariants: [TRAINING_TIER2_VARIANT],
@@ -490,6 +547,37 @@ describe('renderQuestBoard()', () => {
 
 		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
 		expect(tier2Card.classList.contains('quest-card-locked')).toBe(false);
+	});
+
+	it('locks rows from levelUnlockGraph node state when tierUnlocked is absent', () => {
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
+			questVariants: [TRAINING_TIER2_VARIANT],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+			levelUnlockGraph: {
+				nodes: [
+					{ questId: 'training_caverns', tier: 1, state: 'unlocked' },
+					{ questId: 'training_caverns', tier: 2, state: 'locked' },
+					{ questId: 'crystal_rescue', tier: 1, state: 'locked' },
+				],
+			},
+		});
+
+		// Tier-2 has a persisted unlock but the server graph says locked
+		// (unmet unlockRequires prereq) — the graph wins.
+		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
+		expect(tier2Card.classList.contains('quest-card-locked')).toBe(true);
+		expect(tier2Card.disabled).toBe(true);
+
+		// Prereq-gated tier-1 quest with no tierUnlocked field is locked too.
+		const crystalCard = container.querySelector('[data-quest-id="crystal_rescue"][data-quest-tier="1"]');
+		expect(crystalCard.classList.contains('quest-card-locked')).toBe(true);
+		expect(crystalCard.disabled).toBe(true);
+		expect(crystalCard.querySelector('.quest-tier-badge').textContent).toBe('Locked');
+
+		// Ungated tier-1 quest stays clickable.
+		const trainingCard = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="1"]');
+		expect(trainingCard.disabled).toBe(false);
 	});
 
 	it('renders a clickable Tier 2 row when unlocked and passes tier on select', () => {

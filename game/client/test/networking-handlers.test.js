@@ -108,6 +108,31 @@ describe('networking socket handlers', () => {
 		expect(clearPendingLobbyJoin).toHaveBeenCalledTimes(1);
 	});
 
+	it('maps questError reason codes to themed messages and passes unknown reasons through', async () => {
+		const { THEME } = await import('../theme.js');
+		const socket = recordingSocket();
+		const showQuestError = vi.fn();
+		const ctx = new Proxy({ THEME, showQuestError }, {
+			get(target, prop) {
+				if (prop in target) return target[prop];
+				const noop = vi.fn();
+				target[prop] = noop;
+				return noop;
+			},
+		});
+		bindLobbyHandlers(socket, ctx);
+		const questError = socket.listeners.get('questError')[0];
+
+		questError({ reason: 'tier_locked' });
+		expect(showQuestError).toHaveBeenLastCalledWith(THEME.run.questTierLocked);
+
+		questError({ reason: 'suspended_checkpoint' });
+		expect(showQuestError).toHaveBeenLastCalledWith(THEME.run.questSuspendedLocked);
+
+		questError({ reason: 'Unknown quest or tier: bogus tier 9' });
+		expect(showQuestError).toHaveBeenLastCalledWith('Unknown quest or tier: bogus tier 9');
+	});
+
 	it('uses volatile transport for supersedable packets and drops while disconnected', () => {
 		const reliableEmit = vi.fn();
 		const volatileEmit = vi.fn();

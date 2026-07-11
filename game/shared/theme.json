@@ -49,6 +49,7 @@
     "resumeReady": "Resume!",
     "suspendedSortieBanner": "Resume expedition — {questName}",
     "questSuspendedLocked": "Resume or abort the suspended sortie before changing contracts.",
+    "questTierLocked": "That contract is still locked — clear its prerequisite contract first.",
     "unknownSector": "unknown sector",
     "awaitingExtract": "Awaiting squad extraction at conduit…",
     "abandonSortie": "Abort Sortie",
