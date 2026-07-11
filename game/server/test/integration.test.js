@@ -939,6 +939,7 @@ describe('Socket Integration — useCard Event', () => {
 			testGameState().enemies = [
 				{
 					id: 'e_ahead',
+					type: 'grunt',
 					x: player.x,
 					z: player.z + 3,
 					hp: 50,
@@ -947,6 +948,7 @@ describe('Socket Integration — useCard Event', () => {
 				},
 				{
 					id: 'e_side',
+					type: 'grunt',
 					x: player.x + 3,
 					z: player.z,
 					hp: 50,
