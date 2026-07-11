@@ -20,9 +20,8 @@ export function bindStateHandlers(s, ctx) {
 		if (ctx.gameState && state && typeof state === 'object') {
 			const prev = ctx.gameState;
 			const SLOW_WORLD_KEYS = [
-				'shopOffer', 'dungeonBounds', 'layoutSeed', 'runSpawnSeed',
-				'selectedQuestId', 'selectedQuestTier', 'currency',
-				'suspendedRunSummary', 'debugTimeScaleAllowed', 'layout',
+				'shopOffer', 'dungeonBounds', 'runSpawnSeed',
+				'currency', 'suspendedRunSummary', 'debugTimeScaleAllowed', 'layout',
 			];
 			for (const key of SLOW_WORLD_KEYS) {
 				if (state[key] === undefined && prev[key] !== undefined) {

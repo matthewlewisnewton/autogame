@@ -101,8 +101,9 @@ function emitHubPresenceUpdate(io, lobby, opts = {}) {
 
   const room = io.to(lobby.id);
   let target = opts.excludeSocketId ? room.except(opts.excludeSocketId) : room;
-  // Lobby rooms are single-instance; skip Redis adapter fanout.
-  if (target.local && typeof target.local.emit === 'function') {
+  // Lobby rooms are single-instance; skip Redis adapter fanout when attached.
+  const redisAdapterActive = !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+  if (redisAdapterActive && target.local && typeof target.local.emit === 'function') {
     target = target.local;
   }
   target.emit(SERVER_TO_CLIENT.HUB_PRESENCE_UPDATE, payload);

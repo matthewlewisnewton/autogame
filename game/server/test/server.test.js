@@ -6030,9 +6030,9 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		expect(snapshot.loot).toEqual(gameState.loot);
 		expect(snapshot.gamePhase).toBe('playing');
 		expect(snapshot.run).toEqual(expect.objectContaining({ id: 'run-1', status: 'playing' }));
-		// Slow-changing catalogs are omitted from hot ticks (client merges).
-		expect(snapshot.layoutSeed).toBeUndefined();
+		expect(snapshot.layoutSeed).toBe(42);
 		expect(snapshot.lobby).toEqual([]);
+		// Slow catalogs omitted from hot ticks (client merges from cold/join).
 		expect(snapshot.dungeonBounds).toBeUndefined();
 		expect(snapshot.shopOffer).toBeUndefined();
 		expect(snapshot.suspendedRunSummary).toBeUndefined();

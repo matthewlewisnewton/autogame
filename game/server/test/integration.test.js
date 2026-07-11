@@ -1204,14 +1204,13 @@ describe('Socket Integration — useCard Event', () => {
 		expect(discardSlot).toBeGreaterThanOrEqual(0);
 		const cardId = player.hand[discardSlot].id;
 
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
 		socket.emit('discardCard', { slotIndex: discardSlot, cardId });
-		const snapshot = await stateUpdatePromise;
+		const deckUpdate = await deckUpdatePromise;
 
-		const updated = snapshot.players[socket._playerId];
-		expect(updated.hand[discardSlot]).toBeNull();
-		expect(updated.deck).toEqual(deckBefore);
-		expect(updated.nextDrawAt).toBeTypeOf('number');
+		expect(deckUpdate.hand[discardSlot]).toBeNull();
+		expect(deckUpdate.deck).toEqual(deckBefore);
+		expect(deckUpdate.nextDrawAt).toBeTypeOf('number');
 	});
 
 	describe('Synergistic cards', () => {

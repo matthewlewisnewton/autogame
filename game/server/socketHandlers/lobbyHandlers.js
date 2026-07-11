@@ -202,14 +202,11 @@ function register(socket, ctx) {
     // data.layout/data.layoutSeed) — deterministic for this questId+tier, the
     // same seed the run will use.
     const { layoutSeed, layout } = previewLayoutForQuest(questId, tier);
-    // Per-account unlock maps go to every socket; the full preview layout is
-    // only needed by the selecting client to cache for deploy.
-    emitQuestPayloadToLobby(lobby);
-    socket.emit(SERVER_TO_CLIENT.QUEST_UPDATE, {
-      selectedQuestId: questId,
-      selectedQuestTier: tier,
-      layoutSeed,
-      layout,
+    emitQuestPayloadToLobby(lobby, {
+      extraFields: {
+        layoutSeed,
+        layout,
+      },
     });
     broadcastLobbyUpdate(lobby);
     });

@@ -1966,7 +1966,8 @@ function runGameLoopTick() {
           const snapshot = hotStateSnapshot();
           const room = io.to(lobby.id);
           let target = room;
-          if (target.local && typeof target.local.emit === 'function') {
+          const redisAdapterActive = !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+          if (redisAdapterActive && target.local && typeof target.local.emit === 'function') {
             target = target.local;
           }
           if (target.volatile && typeof target.volatile.emit === 'function') {

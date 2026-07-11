@@ -177,20 +177,26 @@ function getIoTarget() {
     }
   }
   if (!room) return io;
-  // Lobby rooms are single-instance (fly affinity). Prefer .local so the Redis
-  // adapter does not pub/sub every tick/action to every other machine.
-  return room.local && typeof room.local.emit === 'function' ? room.local : room;
+  const redisAdapterActive = !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+  if (redisAdapterActive && room.local && typeof room.local.emit === 'function') {
+    return room.local;
+  }
+  return room;
 }
 
 /**
- * Emit a lobby-scoped event, preferring local-only delivery when available.
+ * Emit a lobby-scoped event. When the Redis adapter is attached, prefer
+ * local-only delivery so lobby rooms (single-instance by fly affinity) do not
+ * pub/sub every tick/action to every other machine.
  */
 function emitToLobbyRoom(lobbyId, event, payload, { volatile = false } = {}) {
   const io = _getIo();
   if (!io || typeof io.to !== 'function') return;
   let room = lobbyId ? io.to(lobbyId) : getIoTarget();
   if (!room || typeof room.emit !== 'function') return;
-  if (room.local && typeof room.local.emit === 'function') {
+  const redisAdapterActive = !!(io.of && io.of('/')?.adapter?.constructor?.name === 'RedisAdapter')
+    || !!(io.sockets?.adapter?.constructor?.name === 'RedisAdapter');
+  if (redisAdapterActive && room.local && typeof room.local.emit === 'function') {
     room = room.local;
   }
   const target = volatile && room.volatile && typeof room.volatile.emit === 'function'
@@ -3798,19 +3804,14 @@ function buildMinionHotSnapshot(minion) {
 
 function buildHotRunSnapshot(run) {
   if (!run) return null;
-  // Client HUD needs objective/passage/wave status each tick; omit bulky static
-  // spawn tables and script definitions that only change on cold snapshots.
-  return {
-    status: run.status,
-    objective: run.objective,
-    passageLocks: run.passageLocks,
-    waveScript: run.waveScript,
-    encounter: run.encounter,
-    bossEncounter: run.bossEncounter,
-    startedAt: run.startedAt,
-    endedAt: run.endedAt,
-    summary: run.summary,
-  };
+  // Pass through HUD/objective fields; drop only known bulky internal tables.
+  const {
+    _spawnTable,
+    _pendingSpawns,
+    enemySpawnPlan,
+    ...rest
+  } = run;
+  return rest;
 }
 
 function buildWorldSnapshot(shopOffer) {
@@ -3852,7 +3853,7 @@ function buildWorldSnapshot(shopOffer) {
   };
 }
 
-/** Per-tick world payload: slim entities + omit slow-changing catalogs. */
+/** Per-tick world payload: slim entities + omit the slowest catalogs. */
 function buildHotWorldSnapshot() {
   return {
     enemies: (_gameState.enemies || []).map(buildEnemyHotSnapshot),
@@ -3873,7 +3874,10 @@ function buildHotWorldSnapshot() {
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     debugTimeScale: _gameState.debugTimeScale ?? 1,
+    selectedQuestId: _gameState.selectedQuestId,
+    selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     run: buildHotRunSnapshot(_gameState.run),
+    layoutSeed: _gameState.layoutSeed,
     telepipe: _gameState.telepipe || null,
   };
 }
