@@ -39,11 +39,15 @@ export function bindStateHandlers(s, ctx) {
 				for (const [id, incoming] of Object.entries(state.players)) {
 					const prior = prev.players[id];
 					if (!prior || !incoming) continue;
+					if (id === ctx.myId && incoming.cardUseState === undefined) {
+						incoming.cardUseState = null;
+						incoming.cardWindupUntil = 0;
+						incoming.cardWindupCardId = null;
+					}
 					if (id === ctx.myId && state.gamePhase === 'lobby') {
 						if (incoming.runRewards === undefined) incoming.runRewards = null;
 						if (incoming.returnRewardsPreview === undefined) incoming.returnRewardsPreview = null;
 						if (incoming.currencyEarnedThisRun === undefined) incoming.currencyEarnedThisRun = 0;
-						if (incoming.cardUseState === undefined) incoming.cardUseState = null;
 					}
 					// Never retain another player's private fields. For this
 					// client, preserve cold collection fields across slim ticks;
