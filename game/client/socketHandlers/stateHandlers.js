@@ -59,7 +59,10 @@ export function bindStateHandlers(s, ctx) {
 			}
 		}
 
-		if (ctx.myId && state?.players?.[ctx.myId] && ctx.gameState?.players?.[ctx.myId]) {
+		if (state?.gamePhase === 'playing'
+			&& ctx.myId
+			&& state?.players?.[ctx.myId]
+			&& ctx.gameState?.players?.[ctx.myId]) {
 			const prevHand = ctx.gameState.players[ctx.myId].hand;
 			if (Array.isArray(prevHand) && !Array.isArray(state.players[ctx.myId].hand)) {
 				state.players[ctx.myId].hand = prevHand;
